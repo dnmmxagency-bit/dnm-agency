@@ -406,11 +406,19 @@ async function updateTaskEstado(task, estado) {
    ============================================================ */
 const taskOverlay = $("#taskOverlay");
 
-function openTaskModal(task, prefill) {
+function openTaskModal(task, prefill, context) {
   editingTask = task || null;
   $("#taskMsg").classList.add("hidden");
-  $("#taskModalTitle").textContent = task ? "Editar tarea" : "Nueva tarea";
+  $("#taskModalTitle").textContent = task
+    ? (context === "grabacion" ? "Editar grabación" : "Editar tarea")
+    : (context === "grabacion" ? "Nueva grabación" : "Nueva tarea");
   $("#btnSaveLabel").textContent = "Guardar";
+
+  // Formulario simplificado para el calendario de grabación:
+  // sin proceso, estado ni prioridad.
+  const grabacion = context === "grabacion";
+  $("#fieldProceso").classList.toggle("hidden", grabacion);
+  $("#rowEstadoPrio").classList.toggle("hidden", grabacion);
 
   // Poblar clientes
   const selC = $("#tCliente");
@@ -656,11 +664,11 @@ function createCalendar(mountId, opts) {
       p.onclick = (e) => {
         e.stopPropagation();
         const t = TASKS.find((x) => x.id === p.dataset.id);
-        if (t) openTaskModal(t);
+        if (t) openTaskModal(t, null, opts.context);
       };
     });
     mount.querySelectorAll(".cal__cell").forEach((c) => {
-      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso });
+      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso }, opts.context);
     });
   }
 
@@ -687,6 +695,7 @@ function initCalendars() {
     calGrab = createCalendar("cal-grabacion", {
       filter: (t) => t.proceso === "Por grabar",
       newProceso: "Por grabar",
+      context: "grabacion",
     });
   }
 }
