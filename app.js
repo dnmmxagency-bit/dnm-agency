@@ -191,6 +191,10 @@ function switchView(view) {
   $$(".nav__item, .bottomnav__item").forEach((b) =>
     b.classList.toggle("active", b.dataset.view === view)
   );
+  if (view === "actividades" || view === "grabacion") {
+    initCalendars();
+    (view === "actividades" ? calAct : calGrab).render();
+  }
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 $$(".nav__item, .bottomnav__item").forEach((b) => {
@@ -265,6 +269,7 @@ async function loadTasks() {
   if (error) { toast("No se pudieron cargar las tareas"); TASKS = []; }
   else TASKS = data || [];
   renderBoard();
+  rerenderCalendars();
 }
 
 /* ---- Utilidades de presentación ---- */
@@ -401,7 +406,7 @@ async function updateTaskEstado(task, estado) {
    ============================================================ */
 const taskOverlay = $("#taskOverlay");
 
-function openTaskModal(task) {
+function openTaskModal(task, prefill) {
   editingTask = task || null;
   $("#taskMsg").classList.add("hidden");
   $("#taskModalTitle").textContent = task ? "Editar tarea" : "Nueva tarea";
@@ -433,6 +438,12 @@ function openTaskModal(task) {
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
+
+  // Prefill al crear desde el calendario (fecha y/o proceso)
+  if (!task && prefill) {
+    if (prefill.due_date) $("#tFecha").value = prefill.due_date;
+    if (prefill.proceso)  $("#tProceso").value = prefill.proceso;
+  }
 
   // Botón eliminar solo si puede
   const delBtn = $("#btnDeleteTask");
@@ -508,4 +519,181 @@ function showTaskMsg(text) {
   m.textContent = text;
   m.className = "msg msg--error";
   m.classList.remove("hidden");
+}
+
+/* ============================================================
+   FASE 3 — Calendarios (mes / semana)
+   ============================================================ */
+
+const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+function ymd(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function sameYmd(a, b) { return ymd(a) === b; }
+
+// Lunes de la semana que contiene 'date'
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = (d.getDay() + 6) % 7; // 0 = lunes
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function createCalendar(mountId, opts) {
+  const mount = document.getElementById(mountId);
+  let cursor = new Date();
+  let mode = "month"; // 'month' | 'week'
+  cursor.setHours(0, 0, 0, 0);
+
+  function tasksByDay() {
+    const map = {};
+    TASKS.filter(opts.filter).forEach((t) => {
+      if (!t.due_date) return;
+      (map[t.due_date] = map[t.due_date] || []).push(t);
+    });
+    return map;
+  }
+
+  function label() {
+    if (mode === "month") {
+      const mn = cursor.toLocaleDateString("es-MX", { month: "long" });
+      return mn.charAt(0).toUpperCase() + mn.slice(1) + " " + cursor.getFullYear();
+    }
+    const start = mondayOf(cursor);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    const sameMonth = start.getMonth() === end.getMonth();
+    const fmt = (d, withMonth) => d.toLocaleDateString("es-MX",
+      withMonth ? { day: "numeric", month: "short" } : { day: "numeric" });
+    return `${fmt(start, !sameMonth)} – ${fmt(end, true)} ${end.getFullYear()}`;
+  }
+
+  function cellsForMonth() {
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const start = mondayOf(first);
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      cells.push(d);
+    }
+    // recorta la última semana si sobra completa
+    while (cells.length > 35 && cells[cells.length - 7].getMonth() !== cursor.getMonth()) {
+      cells.splice(cells.length - 7, 7);
+    }
+    return cells;
+  }
+
+  function cellsForWeek() {
+    const start = mondayOf(cursor);
+    const cells = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      cells.push(d);
+    }
+    return cells;
+  }
+
+  function render() {
+    const byDay = tasksByDay();
+    const todayStr = ymd(new Date());
+    const cells = mode === "month" ? cellsForMonth() : cellsForWeek();
+    const maxPills = mode === "week" ? 12 : 3;
+
+    let grid = `<div class="cal__weekdays">${WEEKDAYS.map((w) => `<div class="cal__weekday">${w}</div>`).join("")}</div>`;
+    grid += `<div class="cal__grid ${mode === "week" ? "week" : ""}">`;
+
+    cells.forEach((d) => {
+      const key = ymd(d);
+      const isOther = mode === "month" && d.getMonth() !== cursor.getMonth();
+      const isToday = key === todayStr;
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const list = (byDay[key] || []);
+
+      let pills = list.slice(0, maxPills).map((t) => {
+        const done = t.estado === "Hecho" || t.estado === "Cancelado";
+        return `<div class="cal__pill ${done ? "done" : ""}" data-prioridad="${escapeHtml(t.prioridad || "Media")}" data-id="${t.id}" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>`;
+      }).join("");
+      if (list.length > maxPills) pills += `<div class="cal__more">+${list.length - maxPills} más</div>`;
+
+      grid += `
+        <div class="cal__cell ${isOther ? "other" : ""} ${isToday ? "today" : ""} ${isWeekend ? "weekend" : ""}" data-day="${key}">
+          <div class="cal__daynum"><span>${d.getDate()}</span></div>
+          ${pills}
+        </div>`;
+    });
+    grid += `</div>`;
+
+    mount.innerHTML = `
+      <div class="cal__bar">
+        <div class="cal__nav">
+          <button class="cal__navbtn" data-act="prev" aria-label="Anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 18-6-6 6-6"/></svg></button>
+          <button class="cal__today" data-act="today">Hoy</button>
+          <button class="cal__navbtn" data-act="next" aria-label="Siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+        <div class="cal__label">${label()}</div>
+        <div class="cal__spacer"></div>
+        <div class="cal__modes">
+          <button data-mode="month" class="${mode === "month" ? "active" : ""}">Mes</button>
+          <button data-mode="week" class="${mode === "week" ? "active" : ""}">Semana</button>
+        </div>
+      </div>
+      ${grid}`;
+
+    // eventos de la barra
+    mount.querySelector('[data-act="prev"]').onclick = () => { shift(-1); };
+    mount.querySelector('[data-act="next"]').onclick = () => { shift(1); };
+    mount.querySelector('[data-act="today"]').onclick = () => { cursor = new Date(); cursor.setHours(0,0,0,0); render(); };
+    mount.querySelectorAll("[data-mode]").forEach((b) => {
+      b.onclick = () => { mode = b.dataset.mode; render(); };
+    });
+
+    // click en una tarjeta -> editar; click en el día -> nueva tarea con esa fecha
+    mount.querySelectorAll(".cal__pill").forEach((p) => {
+      p.onclick = (e) => {
+        e.stopPropagation();
+        const t = TASKS.find((x) => x.id === p.dataset.id);
+        if (t) openTaskModal(t);
+      };
+    });
+    mount.querySelectorAll(".cal__cell").forEach((c) => {
+      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso });
+    });
+  }
+
+  function shift(dir) {
+    if (mode === "month") cursor.setMonth(cursor.getMonth() + dir);
+    else cursor.setDate(cursor.getDate() + dir * 7);
+    render();
+  }
+
+  return { render };
+}
+
+// Instancias
+let calAct = null;   // todas las tareas con fecha
+let calGrab = null;  // solo "Por grabar"
+
+function initCalendars() {
+  if (!calAct) {
+    calAct = createCalendar("cal-actividades", {
+      filter: () => true,
+    });
+  }
+  if (!calGrab) {
+    calGrab = createCalendar("cal-grabacion", {
+      filter: (t) => t.proceso === "Por grabar",
+      newProceso: "Por grabar",
+    });
+  }
+}
+
+function rerenderCalendars() {
+  initCalendars();
+  // solo re-render de la vista visible (las otras se rendean al entrar)
+  if ($("#view-actividades").classList.contains("active")) calAct.render();
+  if ($("#view-grabacion").classList.contains("active")) calGrab.render();
 }

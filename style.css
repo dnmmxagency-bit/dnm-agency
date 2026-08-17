@@ -634,3 +634,114 @@ textarea.input { resize: vertical; min-height: 70px; }
   .fab { display: flex; }
   .toolbar .btn--newtask { display: none; } /* en móvil usamos el FAB */
 }
+
+/* ============================================================
+   FASE 3 — Calendarios (mes / semana)
+   ============================================================ */
+.cal { display: flex; flex-direction: column; gap: 14px; }
+
+.cal__bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.cal__nav { display: flex; align-items: center; gap: 6px; }
+.cal__navbtn {
+  background: transparent; border: 1px solid var(--border-strong);
+  color: var(--text); width: 34px; height: 34px;
+  display: grid; place-items: center; cursor: pointer;
+  transition: border-color var(--dur), color var(--dur);
+}
+.cal__navbtn:hover { border-color: var(--amber); color: var(--amber); }
+.cal__navbtn svg { width: 16px; height: 16px; stroke-width: 2; }
+.cal__today {
+  background: transparent; border: 1px solid var(--border-strong);
+  color: var(--text); padding: 0 14px; height: 34px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  transition: border-color var(--dur), color var(--dur);
+}
+.cal__today:hover { border-color: var(--amber); color: var(--amber); }
+.cal__label {
+  font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+  text-transform: capitalize; min-width: 160px;
+}
+.cal__spacer { flex: 1; }
+.cal__modes { display: flex; border: 1px solid var(--border); }
+.cal__modes button {
+  background: transparent; border: none; color: var(--text-muted);
+  padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur), color var(--dur);
+}
+.cal__modes button.active { background: var(--amber-a08); color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+
+/* Cuadrícula */
+.cal__weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border); border-bottom: none;
+}
+.cal__weekday {
+  padding: 8px 10px; font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-faint); font-weight: 600;
+  text-align: left; border-right: 1px solid var(--border);
+}
+.cal__weekday:last-child { border-right: none; }
+
+.cal__grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border);
+}
+.cal__grid.week { grid-template-columns: repeat(7, 1fr); }
+
+.cal__cell {
+  min-height: 104px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 6px 8px;
+  display: flex; flex-direction: column; gap: 4px;
+  cursor: pointer;
+  transition: background var(--dur);
+  overflow: hidden;
+}
+.cal__grid.week .cal__cell { min-height: 320px; }
+.cal__cell:nth-child(7n) { border-right: none; }
+.cal__cell:hover { background: var(--surface); }
+.cal__cell.other { background: var(--bg-deep); }
+.cal__cell.other .cal__daynum { color: var(--border-strong); }
+.cal__cell.weekend { background: rgba(255,255,255,0.012); }
+.cal__cell.today { box-shadow: inset 0 0 0 2px var(--amber-a50); }
+
+.cal__daynum {
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cal__cell.today .cal__daynum span:first-child {
+  background: var(--amber); color: var(--bg-deep);
+  width: 22px; height: 22px; display: grid; place-items: center;
+  font-weight: 700; border-radius: 50%;
+}
+
+.cal__pill {
+  font-size: 11px; line-height: 1.25;
+  padding: 3px 6px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--amber);
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background var(--dur);
+}
+.cal__pill:hover { background: var(--surface-3); }
+.cal__pill[data-prioridad="Alta"]  { border-left-color: var(--danger); }
+.cal__pill[data-prioridad="Media"] { border-left-color: var(--amber); }
+.cal__pill[data-prioridad="Baja"]  { border-left-color: var(--border-strong); }
+.cal__pill.done { opacity: 0.5; text-decoration: line-through; }
+.cal__more { font-size: 10px; color: var(--text-faint); padding-left: 2px; }
+
+.cal__hint { font-size: 12px; color: var(--text-faint); }
+
+/* Responsive: en móvil, celdas más compactas y scroll */
+@media (max-width: 780px) {
+  .cal__label { font-size: 15px; min-width: 0; width: 100%; order: -1; }
+  .cal__cell { min-height: 74px; padding: 4px; }
+  .cal__grid.week .cal__cell { min-height: 120px; }
+  .cal__weekday { padding: 6px 4px; font-size: 10px; }
+  .cal__pill { font-size: 10px; padding: 2px 4px; }
+  .cal__daynum { font-size: 11px; }
+}
