@@ -267,6 +267,7 @@ let MEMBERS = [];   // [{id,name,email,role}]
 let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
 let editingTask = null; // null = creando; objeto = editando
+let taskNotes = [];     // notas/correcciones en edición dentro del modal
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
@@ -375,6 +376,7 @@ function taskCardEl(t) {
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
+      ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
     </div>
     <div class="tcard__foot">
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
@@ -473,6 +475,11 @@ function openTaskModal(task, prefill, context) {
   $("#tCliente").value   = task?.client_id || "";
   $("#tDrive").value     = task?.drive_url || "";
 
+  // Notas / correcciones (copia de trabajo)
+  taskNotes = Array.isArray(task?.notes) ? JSON.parse(JSON.stringify(task.notes)) : [];
+  $("#tNoteInput").value = "";
+  renderTaskNotes();
+
   // Prefill al crear desde el calendario (fecha y/o proceso)
   if (!task && prefill) {
     if (prefill.due_date) $("#tFecha").value = prefill.due_date;
@@ -514,6 +521,7 @@ $("#btnSaveTask").onclick = async () => {
     client_id: $("#tCliente").value || null,
     drive_url: normalizeUrl($("#tDrive").value),
     assignee_ids,
+    notes: taskNotes,
     updated_at: new Date().toISOString(),
   };
 
@@ -1019,3 +1027,57 @@ function refreshClientFilesPanel() {
   if (exists) loadClientFiles(editingClient.id);
   else $("#cFilesList").innerHTML = "";
 }
+
+/* ============================================================
+   FASE 6 — Notas y correcciones (dentro del modal de tarea)
+   ============================================================ */
+function renderTaskNotes() {
+  const box = $("#tNotesList");
+  if (!taskNotes.length) {
+    box.innerHTML = '<div class="notes-empty">Aún no hay notas. Agrega correcciones o comentarios abajo.</div>';
+    return;
+  }
+  box.innerHTML = "";
+  // más recientes primero
+  taskNotes.slice().reverse().forEach((note) => {
+    const row = document.createElement("div");
+    row.className = "note";
+    row.innerHTML = `
+      <div class="note__meta">
+        <span class="note__who">${escapeHtml(note.author_name || "Alguien")}</span>
+        <span>${escapeHtml(fmtDateTime(note.created_at))}</span>
+      </div>
+      <div class="note__body">${escapeHtml(note.body)}</div>`;
+    const del = document.createElement("button");
+    del.className = "note__del";
+    del.type = "button";
+    del.title = "Borrar nota";
+    del.innerHTML = "&times;";
+    del.onclick = () => {
+      taskNotes = taskNotes.filter((n) => n.id !== note.id);
+      renderTaskNotes();
+    };
+    row.querySelector(".note__meta").appendChild(del);
+    box.appendChild(row);
+  });
+}
+
+function newId() {
+  try { return crypto.randomUUID(); } catch (e) { return "n_" + Date.now() + "_" + Math.random().toString(16).slice(2); }
+}
+
+$("#btnAddNote").onclick = () => {
+  const input = $("#tNoteInput");
+  const body = input.value.trim();
+  if (!body) return;
+  taskNotes.push({
+    id: newId(),
+    body,
+    author_id: currentProfile?.id || null,
+    author_name: currentProfile?.name || currentProfile?.email || "Alguien",
+    created_at: new Date().toISOString(),
+  });
+  input.value = "";
+  renderTaskNotes();
+  input.focus();
+};

@@ -24,17 +24,21 @@
 </head>
 <body>
 
+  <!-- Fondo ambiental: onda tenue de marca, siempre en movimiento -->
+  <div id="ambient" aria-hidden="true">
+    <span class="b1"></span><span class="b2"></span><span class="b3"></span>
+  </div>
+
   <!-- ============================================================
-       PORTADA / INTRO — corte letterbox
+       PORTADA / INTRO — minimal
        ============================================================ -->
   <div id="splash">
     <div class="splash__center">
       <img class="splash__iso" src="icons/isotipo-white.png" alt="DNM" />
+      <div class="splash__line"></div>
       <div class="splash__word">DNM<span class="accent">.</span></div>
       <div class="splash__sub">Agency Management</div>
     </div>
-    <div class="lb lb--top"></div>
-    <div class="lb lb--bottom"></div>
     <div class="splash__skip">Toca para entrar</div>
   </div>
 
@@ -327,6 +331,17 @@
           <label>Responsables</label>
           <div class="people" id="tPeople">
             <div class="people__empty">Cargando equipo…</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notas y correcciones</label>
+          <div class="notes-list" id="tNotesList"></div>
+          <div class="note-add">
+            <textarea class="input" id="tNoteInput" placeholder="Escribe una corrección o nota…"></textarea>
+            <div class="note-add__row">
+              <button class="btn btn--ghost btn--sm" id="btnAddNote" type="button">Agregar nota</button>
+            </div>
           </div>
         </div>
       </div>
