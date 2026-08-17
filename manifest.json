@@ -1,0 +1,17 @@
+{
+  "name": "DNM Agency Management",
+  "short_name": "DNM",
+  "description": "Producción, tareas y clientes — herramienta interna de DNM Agency.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0D0D0A",
+  "theme_color": "#0D0D0A",
+  "lang": "es-MX",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
