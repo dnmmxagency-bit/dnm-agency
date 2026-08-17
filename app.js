@@ -2,6 +2,28 @@
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
 
+/* ---- Portada / intro ---- */
+(function initSplash() {
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  let seen = false;
+  try { seen = sessionStorage.getItem("dnm_splash_seen") === "1"; } catch (e) {}
+  if (seen) splash.classList.add("instant");
+
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hold = seen ? 500 : (reduce ? 800 : 2300);
+
+  let closed = false;
+  const finish = () => {
+    if (closed) return; closed = true;
+    splash.classList.add("done");
+    setTimeout(() => splash.remove(), 600);
+    try { sessionStorage.setItem("dnm_splash_seen", "1"); } catch (e) {}
+  };
+  const t = setTimeout(finish, hold);
+  splash.addEventListener("click", () => { clearTimeout(t); finish(); });
+})();
+
 /* ---- Configuración de Supabase ----
    La llave "publishable" es pública por diseño: es seguro que viva
    aquí, en el código que corre en el navegador. */

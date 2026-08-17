@@ -861,3 +861,108 @@ textarea.input { resize: vertical; min-height: 70px; }
 
 .ccard__badges { display: flex; gap: 10px; align-items: center; }
 .ccard__files { font-size: 12px; color: var(--amber-hi); }
+
+/* ============================================================
+   PORTADA / INTRO cinematográfica (feeling DNM)
+   ============================================================ */
+#splash {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg-deep);
+  display: grid; place-items: center;
+  opacity: 1; transition: opacity 0.55s var(--ease);
+  overflow: hidden;
+}
+#splash.done { opacity: 0; pointer-events: none; }
+
+/* Halo cálido que respira */
+#splash::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(52% 48% at 50% 44%, rgba(199,120,38,0.20), rgba(5,5,4,0) 70%);
+  opacity: 0; animation: sp-glow 2.2s var(--ease) forwards;
+}
+/* Grano/viñeta muy sutil */
+#splash::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(120% 120% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+@keyframes sp-glow { 0%{opacity:0} 35%{opacity:1} 100%{opacity:0.55} }
+
+.splash__wrap {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+
+.splash__stage { position: relative; width: 200px; height: 200px; display: grid; place-items: center; }
+
+/* Esquinas tipo marco de cámara que se cierran */
+.splash__stage i {
+  position: absolute; width: 32px; height: 32px;
+  border: 2px solid var(--amber); opacity: 0;
+}
+.splash__stage i.tl { top: 0; left: 0; border-right: none; border-bottom: none; transform: translate(-14px,-14px); animation: sp-br 0.6s var(--ease) 0.45s forwards; }
+.splash__stage i.tr { top: 0; right: 0; border-left: none;  border-bottom: none; transform: translate(14px,-14px);  animation: sp-br 0.6s var(--ease) 0.55s forwards; }
+.splash__stage i.bl { bottom: 0; left: 0; border-right: none; border-top: none; transform: translate(-14px,14px);  animation: sp-br 0.6s var(--ease) 0.65s forwards; }
+.splash__stage i.br { bottom: 0; right: 0; border-left: none;  border-top: none; transform: translate(14px,14px);   animation: sp-br 0.6s var(--ease) 0.75s forwards; }
+@keyframes sp-br { to { opacity: 1; transform: translate(0,0); } }
+
+/* Monograma que entra en foco */
+.splash__iso {
+  width: 92px; height: 92px; display: block;
+  opacity: 0; filter: blur(14px) drop-shadow(0 0 0 rgba(199,120,38,0));
+  transform: scale(1.2);
+  animation: sp-focus 1s var(--ease) 0.15s forwards;
+}
+@keyframes sp-focus {
+  to { opacity: 1; filter: blur(0) drop-shadow(0 6px 26px rgba(199,120,38,0.35)); transform: scale(1); }
+}
+
+/* Barrido de luz ámbar */
+.splash__scan {
+  position: absolute; left: 6%; right: 6%; height: 2px; top: 8%;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  opacity: 0; animation: sp-scan 1.15s var(--ease) 0.5s;
+}
+@keyframes sp-scan {
+  0% { opacity: 0; top: 8%; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; top: 92%; }
+}
+
+.splash__word {
+  font-family: "Anton", "Inter", sans-serif; font-weight: 400;
+  font-size: 34px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text); margin-top: 20px;
+  opacity: 0; transform: translateY(10px);
+  animation: sp-up 0.6s var(--ease) 0.95s forwards;
+}
+.splash__word .accent { color: var(--amber); }
+.splash__sub {
+  font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--text-faint); margin-top: 8px;
+  opacity: 0; transform: translateY(10px);
+  animation: sp-up 0.6s var(--ease) 1.15s forwards;
+}
+@keyframes sp-up { to { opacity: 1; transform: none; } }
+
+.splash__skip {
+  position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); left: 0; right: 0;
+  text-align: center; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-faint); opacity: 0; animation: sp-up 0.5s var(--ease) 1.6s forwards;
+}
+
+/* Versión rápida (ya vista en la sesión) o sin animación */
+#splash.instant *, .splash-reduce #splash * { animation: none !important; }
+#splash.instant .splash__iso, #splash.instant .splash__word, #splash.instant .splash__sub, #splash.instant .splash__stage i {
+  opacity: 1 !important; filter: none !important; transform: none !important;
+}
+#splash.instant .splash__scan { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  #splash * { animation: none !important; }
+  .splash__iso, .splash__word, .splash__sub, .splash__stage i {
+    opacity: 1 !important; filter: none !important; transform: none !important;
+  }
+  .splash__scan { display: none; }
+}
