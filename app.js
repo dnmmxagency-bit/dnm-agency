@@ -195,6 +195,7 @@ function switchView(view) {
     initCalendars();
     (view === "actividades" ? calAct : calGrab).render();
   }
+  if (view === "clientes") renderClients();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 $$(".nav__item, .bottomnav__item").forEach((b) => {
@@ -423,7 +424,7 @@ function openTaskModal(task, prefill, context) {
   // Poblar clientes
   const selC = $("#tCliente");
   selC.innerHTML = '<option value="">— Sin cliente —</option>' +
-    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.active ? "" : " (inactivo)"}</option>`).join("");
 
   // Poblar responsables (checkboxes)
   const people = $("#tPeople");
@@ -705,4 +706,145 @@ function rerenderCalendars() {
   // solo re-render de la vista visible (las otras se rendean al entrar)
   if ($("#view-actividades").classList.contains("active")) calAct.render();
   if ($("#view-grabacion").classList.contains("active")) calGrab.render();
+}
+
+/* ============================================================
+   FASE 4 — Clientes
+   ============================================================ */
+
+let clientFilter = "todos"; // 'todos' | 'activos'
+let editingClient = null;
+
+function canDeleteClient(c) {
+  return c.owner_id === currentProfile?.id || currentProfile?.role === "owner";
+}
+
+function taskCountForClient(id) {
+  return TASKS.filter((t) => t.client_id === id).length;
+}
+
+function renderClients() {
+  const grid = $("#clientsGrid");
+  const list = clientFilter === "activos" ? CLIENTS.filter((c) => c.active) : CLIENTS;
+
+  $("#clientCount").textContent = `${list.length} ${list.length === 1 ? "cliente" : "clientes"}`;
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="clients-empty" style="grid-column:1/-1">
+        <strong>${CLIENTS.length === 0 ? "Aún no hay clientes" : "No hay clientes en este filtro"}</strong>
+        <span>${CLIENTS.length === 0 ? 'Toca "Nuevo cliente" para agregar el primero.' : "Cambia el filtro a Todos para verlos."}</span>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = "";
+  list.forEach((c) => {
+    const n = taskCountForClient(c.id);
+    const el = document.createElement("article");
+    el.className = "ccard" + (c.active ? "" : " inactive");
+    el.innerHTML = `
+      <div class="ccard__head">
+        <div class="ccard__name">${escapeHtml(c.name)}</div>
+        <span class="status ${c.active ? "" : "off"}">${c.active ? "Activo" : "Inactivo"}</span>
+      </div>
+      ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
+      <div class="ccard__foot">
+        <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
+      </div>`;
+    el.onclick = () => openClientModal(c);
+    grid.appendChild(el);
+  });
+}
+
+/* Filtro Todos / Activos */
+$("#clientFilter").querySelectorAll("button").forEach((b) => {
+  b.onclick = () => {
+    clientFilter = b.dataset.f;
+    $("#clientFilter").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+    renderClients();
+  };
+});
+
+/* Modal */
+const clientOverlay = $("#clientOverlay");
+
+function openClientModal(client) {
+  editingClient = client || null;
+  $("#clientMsg").classList.add("hidden");
+  $("#clientModalTitle").textContent = client ? "Editar cliente" : "Nuevo cliente";
+  $("#btnSaveClientLabel").textContent = "Guardar";
+
+  $("#cName").value = client?.name || "";
+  $("#cNotes").value = client?.notes || "";
+  $("#cActive").checked = client ? !!client.active : true;
+
+  $("#btnDeleteClient").classList.toggle("hidden", !(client && canDeleteClient(client)));
+
+  clientOverlay.classList.add("open");
+  setTimeout(() => $("#cName").focus(), 50);
+}
+
+function closeClientModal() {
+  clientOverlay.classList.remove("open");
+  editingClient = null;
+}
+
+$("#btnNewClient").onclick = () => openClientModal(null);
+$("#clientModalClose").onclick = closeClientModal;
+$("#btnCancelClient").onclick = closeClientModal;
+clientOverlay.addEventListener("click", (e) => { if (e.target === clientOverlay) closeClientModal(); });
+
+/* Guardar */
+$("#btnSaveClient").onclick = async () => {
+  const name = $("#cName").value.trim();
+  if (!name) { showClientMsg("Escribe el nombre del cliente."); return; }
+
+  const payload = {
+    name,
+    notes: $("#cNotes").value.trim() || null,
+    active: $("#cActive").checked,
+  };
+
+  const btn = $("#btnSaveClient");
+  btn.disabled = true;
+  $("#btnSaveClientLabel").innerHTML = '<span class="spinner"></span>';
+
+  let error;
+  if (editingClient) {
+    ({ error } = await sb.from("clients").update(payload).eq("id", editingClient.id));
+  } else {
+    payload.owner_id = currentProfile.id;
+    ({ error } = await sb.from("clients").insert(payload));
+  }
+
+  btn.disabled = false;
+  $("#btnSaveClientLabel").textContent = "Guardar";
+
+  if (error) { showClientMsg("No se pudo guardar: " + error.message); return; }
+  closeClientModal();
+  toast(editingClient ? "Cliente actualizado" : "Cliente creado");
+  await loadClients();
+  renderClients();
+};
+
+/* Eliminar */
+$("#btnDeleteClient").onclick = async () => {
+  if (!editingClient) return;
+  const n = taskCountForClient(editingClient.id);
+  const extra = n > 0 ? ` Las ${n} tarea(s) ligadas quedarán sin cliente.` : "";
+  if (!confirm("¿Eliminar este cliente?" + extra)) return;
+  const { error } = await sb.from("clients").delete().eq("id", editingClient.id);
+  if (error) { showClientMsg("No se pudo eliminar: " + error.message); return; }
+  closeClientModal();
+  toast("Cliente eliminado");
+  await Promise.all([loadClients(), loadTasks()]);
+  renderClients();
+};
+
+function showClientMsg(text) {
+  const m = $("#clientMsg");
+  m.textContent = text;
+  m.className = "msg msg--error";
+  m.classList.remove("hidden");
 }

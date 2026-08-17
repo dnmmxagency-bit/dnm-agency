@@ -189,12 +189,23 @@
           <div class="page-head">
             <div class="eyebrow">Directorio</div>
             <h2 class="page-title">Clientes</h2>
-            <p class="page-desc">Alta y edición de clientes (nombre, notas, activo/inactivo) para relacionarlos con tus tareas.</p>
+            <p class="page-desc">Da de alta y edita clientes para poder relacionarlos con tus tareas. Toca una tarjeta para editarla.</p>
           </div>
-          <div class="soon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            <div><strong>Fase 4 — Clientes</strong><span>Directorio de clientes vinculado a las tareas.</span></div>
+
+          <div class="toolbar">
+            <button class="btn btn--primary" id="btnNewClient" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+              Nuevo cliente
+            </button>
+            <div class="seg" id="clientFilter">
+              <button data-f="todos" class="active" type="button">Todos</button>
+              <button data-f="activos" type="button">Activos</button>
+            </div>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="clientCount">0 clientes</span>
           </div>
+
+          <div class="clients-grid" id="clientsGrid"></div>
         </section>
 
       </main>
@@ -305,6 +316,45 @@
         <div class="toolbar__spacer"></div>
         <button class="btn btn--ghost" id="btnCancelTask" type="button">Cancelar</button>
         <button class="btn btn--primary" id="btnSaveTask" type="button"><span id="btnSaveLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: crear / editar cliente
+       ============================================================ -->
+  <div class="overlay" id="clientOverlay">
+    <div class="modal frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="clientModalTitle">Nuevo cliente</h3>
+        <button class="modal__x" id="clientModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="clientMsg" class="msg hidden"></div>
+
+        <div class="field">
+          <label for="cName">Nombre</label>
+          <input class="input" type="text" id="cName" placeholder="Ej. Grupo Fénix" />
+        </div>
+
+        <div class="field">
+          <label for="cNotes">Notas</label>
+          <textarea class="input" id="cNotes" placeholder="Contacto, marca, detalles útiles…"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="switch">
+            <input type="checkbox" id="cActive" checked />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span class="switch__label">Cliente activo</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger btn--sm hidden" id="btnDeleteClient" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelClient" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveClient" type="button"><span id="btnSaveClientLabel">Guardar</span></button>
       </div>
     </div>
   </div>
