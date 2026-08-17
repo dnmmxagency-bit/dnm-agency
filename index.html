@@ -131,11 +131,36 @@
           <div class="page-head">
             <div class="eyebrow">Tareas</div>
             <h2 class="page-title">Tablero de producción</h2>
-            <p class="page-desc">Aquí vivirá el tablero Kanban con tus tareas por estado. Lo construimos en la siguiente fase.</p>
+            <p class="page-desc">Todas las tareas del equipo, organizadas por estado. Arrastra una tarjeta entre columnas (en computadora) o tócala para editarla y cambiar su estado.</p>
           </div>
-          <div class="soon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
-            <div><strong>Fase 2 — Tareas y tablero</strong><span>Crear tareas con proceso, prioridad, responsables y fecha límite; columnas Pendiente / En curso / Hecho / Cancelado.</span></div>
+
+          <div class="toolbar">
+            <button class="btn btn--primary btn--newtask" id="btnNewTask" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+              Nueva tarea
+            </button>
+            <button class="btn btn--ghost btn--sm" id="btnRefresh" type="button">Refrescar</button>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="taskCount">0 tareas</span>
+          </div>
+
+          <div class="board" id="board">
+            <div class="column" data-estado="Pendiente">
+              <div class="column__head"><span class="column__title"><span class="dot"></span>Pendiente</span><span class="column__count">0</span></div>
+              <div class="column__body" data-col="Pendiente"></div>
+            </div>
+            <div class="column" data-estado="En curso">
+              <div class="column__head"><span class="column__title"><span class="dot"></span>En curso</span><span class="column__count">0</span></div>
+              <div class="column__body" data-col="En curso"></div>
+            </div>
+            <div class="column" data-estado="Hecho">
+              <div class="column__head"><span class="column__title"><span class="dot"></span>Hecho</span><span class="column__count">0</span></div>
+              <div class="column__body" data-col="Hecho"></div>
+            </div>
+            <div class="column" data-estado="Cancelado">
+              <div class="column__head"><span class="column__title"><span class="dot"></span>Cancelado</span><span class="column__count">0</span></div>
+              <div class="column__body" data-col="Cancelado"></div>
+            </div>
           </div>
         </section>
 
@@ -181,6 +206,11 @@
       </main>
     </div>
 
+    <!-- Botón flotante para nueva tarea (móvil) -->
+    <button class="fab" id="fabNewTask" type="button" title="Nueva tarea">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+
     <!-- Navegación inferior (móvil) -->
     <nav class="bottomnav">
       <div class="bottomnav__row">
@@ -203,6 +233,86 @@
       </div>
     </nav>
 
+  </div>
+
+  <!-- ============================================================
+       MODAL: crear / editar tarea
+       ============================================================ -->
+  <div class="overlay" id="taskOverlay">
+    <div class="modal frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="taskModalTitle">Nueva tarea</h3>
+        <button class="modal__x" id="taskModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="taskMsg" class="msg hidden"></div>
+
+        <div class="field">
+          <label for="tTitle">Título</label>
+          <input class="input" type="text" id="tTitle" placeholder="Ej. Grabar testimonial cliente X" />
+        </div>
+
+        <div class="field">
+          <label for="tProceso">Proceso de producción</label>
+          <select class="input" id="tProceso">
+            <option>Planeación</option>
+            <option>Por grabar</option>
+            <option>Por editar</option>
+            <option>En revisión interna</option>
+            <option>En revisión con cliente</option>
+            <option>Correcciones</option>
+            <option>Entregado</option>
+            <option>Cancelado</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="tEstado">Estado (columna)</label>
+            <select class="input" id="tEstado">
+              <option>Pendiente</option>
+              <option>En curso</option>
+              <option>Hecho</option>
+              <option>Cancelado</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tPrioridad">Prioridad</label>
+            <select class="input" id="tPrioridad">
+              <option>Alta</option>
+              <option selected>Media</option>
+              <option>Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="tFecha">Fecha límite</label>
+            <input class="input" type="date" id="tFecha" />
+          </div>
+          <div class="field">
+            <label for="tCliente">Cliente relacionado</label>
+            <select class="input" id="tCliente">
+              <option value="">— Sin cliente —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Responsables</label>
+          <div class="people" id="tPeople">
+            <div class="people__empty">Cargando equipo…</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger btn--sm hidden" id="btnDeleteTask" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelTask" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveTask" type="button"><span id="btnSaveLabel">Guardar</span></button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>

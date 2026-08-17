@@ -174,6 +174,7 @@ function paintUser(p) {
 function enterApp() {
   authScreen.classList.add("hidden");
   appRoot.classList.add("active");
+  bootData();
 }
 function exitApp() {
   appRoot.classList.remove("active");
@@ -227,4 +228,284 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
+}
+
+/* ============================================================
+   FASE 2 — Tareas y tablero
+   ============================================================ */
+
+const ESTADOS = ["Pendiente", "En curso", "Hecho", "Cancelado"];
+
+let MEMBERS = [];   // [{id,name,email,role}]
+let CLIENTS = [];   // [{id,name,active}]
+let TASKS = [];     // tareas
+let editingTask = null; // null = creando; objeto = editando
+
+/* ---- Carga inicial de datos al entrar ---- */
+async function bootData() {
+  await Promise.all([loadMembers(), loadClients()]);
+  await loadTasks();
+}
+
+async function loadMembers() {
+  const { data, error } = await sb.from("profiles").select("id,name,email,role").order("name");
+  MEMBERS = error ? [] : (data || []);
+}
+
+async function loadClients() {
+  const { data, error } = await sb.from("clients").select("id,name,active").order("name");
+  CLIENTS = error ? [] : (data || []);
+}
+
+async function loadTasks() {
+  const { data, error } = await sb
+    .from("tasks")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) { toast("No se pudieron cargar las tareas"); TASKS = []; }
+  else TASKS = data || [];
+  renderBoard();
+}
+
+/* ---- Utilidades de presentación ---- */
+function memberName(id) {
+  const m = MEMBERS.find((x) => x.id === id);
+  return m ? (m.name || m.email) : "—";
+}
+function fmtDate(d) {
+  if (!d) return null;
+  const [y, mo, da] = d.split("-").map(Number);
+  const dt = new Date(y, mo - 1, da);
+  return dt.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+function isOverdue(d, estado) {
+  if (!d || estado === "Hecho" || estado === "Cancelado") return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const [y, mo, da] = d.split("-").map(Number);
+  return new Date(y, mo - 1, da) < today;
+}
+function canDelete(task) {
+  return task.owner_id === currentProfile?.id || currentProfile?.role === "owner";
+}
+
+/* ---- Render del tablero ---- */
+function renderBoard() {
+  const board = $("#board");
+  // limpiar columnas
+  ESTADOS.forEach((e) => {
+    const body = board.querySelector(`.column__body[data-col="${e}"]`);
+    body.innerHTML = "";
+  });
+
+  $("#taskCount").textContent = `${TASKS.length} ${TASKS.length === 1 ? "tarea" : "tareas"}`;
+
+  const counts = { "Pendiente":0, "En curso":0, "Hecho":0, "Cancelado":0 };
+
+  TASKS.forEach((t) => {
+    const estado = ESTADOS.includes(t.estado) ? t.estado : "Pendiente";
+    counts[estado]++;
+    const body = board.querySelector(`.column__body[data-col="${estado}"]`);
+    body.appendChild(taskCardEl(t));
+  });
+
+  // contadores + vacíos
+  ESTADOS.forEach((e) => {
+    const col = board.querySelector(`.column[data-estado="${e}"]`);
+    col.querySelector(".column__count").textContent = counts[e];
+    const body = col.querySelector(".column__body");
+    if (counts[e] === 0) {
+      const empty = document.createElement("div");
+      empty.className = "col-empty";
+      empty.textContent = "Sin tareas";
+      body.appendChild(empty);
+    }
+  });
+}
+
+function taskCardEl(t) {
+  const card = document.createElement("article");
+  card.className = "tcard";
+  card.dataset.id = t.id;
+  card.dataset.prioridad = t.prioridad || "Media";
+  card.setAttribute("draggable", "true");
+
+  const cliente = CLIENTS.find((c) => c.id === t.client_id);
+  const fecha = fmtDate(t.due_date);
+  const overdue = isOverdue(t.due_date, t.estado);
+
+  const ids = Array.isArray(t.assignee_ids) ? t.assignee_ids : [];
+  let avatars = "";
+  ids.slice(0, 3).forEach((id) => {
+    avatars += `<span class="mini" title="${escapeHtml(memberName(id))}">${escapeHtml(initials(memberName(id)))}</span>`;
+  });
+  if (ids.length > 3) avatars += `<span class="mini more">+${ids.length - 3}</span>`;
+
+  card.innerHTML = `
+    <div class="tcard__title">${escapeHtml(t.title)}</div>
+    <div class="tcard__row">
+      <span class="chip chip--proceso">${escapeHtml(t.proceso || "Planeación")}</span>
+      ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
+      ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
+    </div>
+    <div class="tcard__foot">
+      <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
+      <span class="assignees">${avatars || '<span style="font-size:11px;color:var(--text-faint)">Sin responsables</span>'}</span>
+    </div>
+  `;
+
+  card.addEventListener("click", () => openTaskModal(t));
+
+  // Arrastrar y soltar (escritorio)
+  card.addEventListener("dragstart", (e) => {
+    card.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", t.id);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+
+  return card;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---- Drag & drop sobre las columnas ---- */
+$$(".column").forEach((col) => {
+  const estado = col.dataset.estado;
+  col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("dragover"); });
+  col.addEventListener("dragleave", () => col.classList.remove("dragover"));
+  col.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    col.classList.remove("dragover");
+    const id = e.dataTransfer.getData("text/plain");
+    const task = TASKS.find((t) => t.id === id);
+    if (!task || task.estado === estado) return;
+    await updateTaskEstado(task, estado);
+  });
+});
+
+async function updateTaskEstado(task, estado) {
+  const prev = task.estado;
+  task.estado = estado;               // optimista
+  renderBoard();
+  const { error } = await sb.from("tasks")
+    .update({ estado, updated_at: new Date().toISOString() })
+    .eq("id", task.id);
+  if (error) { task.estado = prev; renderBoard(); toast("No se pudo mover la tarea"); }
+}
+
+/* ============================================================
+   Modal de tarea
+   ============================================================ */
+const taskOverlay = $("#taskOverlay");
+
+function openTaskModal(task) {
+  editingTask = task || null;
+  $("#taskMsg").classList.add("hidden");
+  $("#taskModalTitle").textContent = task ? "Editar tarea" : "Nueva tarea";
+  $("#btnSaveLabel").textContent = "Guardar";
+
+  // Poblar clientes
+  const selC = $("#tCliente");
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+
+  // Poblar responsables (checkboxes)
+  const people = $("#tPeople");
+  if (MEMBERS.length === 0) {
+    people.innerHTML = '<div class="people__empty">Aún no hay más personas registradas.</div>';
+  } else {
+    const selected = new Set(task && Array.isArray(task.assignee_ids) ? task.assignee_ids : []);
+    people.innerHTML = MEMBERS.map((m) => `
+      <label class="person">
+        <input type="checkbox" value="${m.id}" ${selected.has(m.id) ? "checked" : ""}/>
+        <span class="person__name">${escapeHtml(m.name || m.email)}</span>
+        ${m.id === currentProfile?.id ? '<span class="person__you">Tú</span>' : ""}
+      </label>`).join("");
+  }
+
+  // Valores
+  $("#tTitle").value     = task?.title || "";
+  $("#tProceso").value   = task?.proceso || "Planeación";
+  $("#tEstado").value    = task?.estado || "Pendiente";
+  $("#tPrioridad").value = task?.prioridad || "Media";
+  $("#tFecha").value     = task?.due_date || "";
+  $("#tCliente").value   = task?.client_id || "";
+
+  // Botón eliminar solo si puede
+  const delBtn = $("#btnDeleteTask");
+  delBtn.classList.toggle("hidden", !(task && canDelete(task)));
+
+  taskOverlay.classList.add("open");
+  setTimeout(() => $("#tTitle").focus(), 50);
+}
+
+function closeTaskModal() {
+  taskOverlay.classList.remove("open");
+  editingTask = null;
+}
+
+$("#btnNewTask").onclick = () => openTaskModal(null);
+$("#fabNewTask").onclick = () => openTaskModal(null);
+$("#btnRefresh").onclick = async () => { await bootData(); toast("Actualizado"); };
+$("#taskModalClose").onclick = closeTaskModal;
+$("#btnCancelTask").onclick = closeTaskModal;
+taskOverlay.addEventListener("click", (e) => { if (e.target === taskOverlay) closeTaskModal(); });
+
+/* ---- Guardar ---- */
+$("#btnSaveTask").onclick = async () => {
+  const title = $("#tTitle").value.trim();
+  if (!title) { showTaskMsg("Escribe un título para la tarea."); return; }
+
+  const assignee_ids = Array.from($("#tPeople").querySelectorAll("input:checked")).map((i) => i.value);
+  const payload = {
+    title,
+    proceso: $("#tProceso").value,
+    estado: $("#tEstado").value,
+    prioridad: $("#tPrioridad").value,
+    due_date: $("#tFecha").value || null,
+    client_id: $("#tCliente").value || null,
+    assignee_ids,
+    updated_at: new Date().toISOString(),
+  };
+
+  const saveBtn = $("#btnSaveTask");
+  saveBtn.disabled = true;
+  $("#btnSaveLabel").innerHTML = '<span class="spinner"></span>';
+
+  let error;
+  if (editingTask) {
+    ({ error } = await sb.from("tasks").update(payload).eq("id", editingTask.id));
+  } else {
+    payload.owner_id = currentProfile.id;
+    ({ error } = await sb.from("tasks").insert(payload));
+  }
+
+  saveBtn.disabled = false;
+  $("#btnSaveLabel").textContent = "Guardar";
+
+  if (error) { showTaskMsg("No se pudo guardar: " + error.message); return; }
+  closeTaskModal();
+  toast(editingTask ? "Tarea actualizada" : "Tarea creada");
+  await loadTasks();
+};
+
+/* ---- Eliminar ---- */
+$("#btnDeleteTask").onclick = async () => {
+  if (!editingTask) return;
+  if (!confirm("¿Eliminar esta tarea? No se puede deshacer.")) return;
+  const { error } = await sb.from("tasks").delete().eq("id", editingTask.id);
+  if (error) { showTaskMsg("No se pudo eliminar: " + error.message); return; }
+  closeTaskModal();
+  toast("Tarea eliminada");
+  await loadTasks();
+};
+
+function showTaskMsg(text) {
+  const m = $("#taskMsg");
+  m.textContent = text;
+  m.className = "msg msg--error";
+  m.classList.remove("hidden");
 }
