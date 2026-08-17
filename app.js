@@ -248,7 +248,7 @@ let editingTask = null; // null = creando; objeto = editando
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
-  await Promise.all([loadMembers(), loadClients()]);
+  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts()]);
   await loadTasks();
 }
 
@@ -352,6 +352,7 @@ function taskCardEl(t) {
       <span class="chip chip--proceso">${escapeHtml(t.proceso || "Planeación")}</span>
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
+      ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
     </div>
     <div class="tcard__foot">
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
@@ -360,6 +361,7 @@ function taskCardEl(t) {
   `;
 
   card.addEventListener("click", () => openTaskModal(t));
+  card.querySelector("[data-drive]")?.addEventListener("click", (e) => e.stopPropagation());
 
   // Arrastrar y soltar (escritorio)
   card.addEventListener("dragstart", (e) => {
@@ -447,6 +449,7 @@ function openTaskModal(task, prefill, context) {
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
+  $("#tDrive").value     = task?.drive_url || "";
 
   // Prefill al crear desde el calendario (fecha y/o proceso)
   if (!task && prefill) {
@@ -487,6 +490,7 @@ $("#btnSaveTask").onclick = async () => {
     prioridad: $("#tPrioridad").value,
     due_date: $("#tFecha").value || null,
     client_id: $("#tCliente").value || null,
+    drive_url: normalizeUrl($("#tDrive").value),
     assignee_ids,
     updated_at: new Date().toISOString(),
   };
@@ -750,7 +754,10 @@ function renderClients() {
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
       <div class="ccard__foot">
-        <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
+        <div class="ccard__badges">
+          <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
+          ${CLIENT_FILE_COUNT[c.id] ? `<span class="ccard__files">${CLIENT_FILE_COUNT[c.id]} ${CLIENT_FILE_COUNT[c.id] === 1 ? "archivo" : "archivos"}</span>` : ""}
+        </div>
       </div>`;
     el.onclick = () => openClientModal(c);
     grid.appendChild(el);
@@ -780,6 +787,8 @@ function openClientModal(client) {
   $("#cActive").checked = client ? !!client.active : true;
 
   $("#btnDeleteClient").classList.toggle("hidden", !(client && canDeleteClient(client)));
+
+  refreshClientFilesPanel();
 
   clientOverlay.classList.add("open");
   setTimeout(() => $("#cName").focus(), 50);
@@ -813,19 +822,29 @@ $("#btnSaveClient").onclick = async () => {
   let error;
   if (editingClient) {
     ({ error } = await sb.from("clients").update(payload).eq("id", editingClient.id));
+    btn.disabled = false;
+    $("#btnSaveClientLabel").textContent = "Guardar";
+    if (error) { showClientMsg("No se pudo guardar: " + error.message); return; }
+    closeClientModal();
+    toast("Cliente actualizado");
+    await loadClients();
+    renderClients();
   } else {
     payload.owner_id = currentProfile.id;
-    ({ error } = await sb.from("clients").insert(payload));
+    const { data, error: insErr } = await sb.from("clients").insert(payload).select().single();
+    btn.disabled = false;
+    $("#btnSaveClientLabel").textContent = "Guardar";
+    if (insErr) { showClientMsg("No se pudo guardar: " + insErr.message); return; }
+    // Cambiar a modo edición sin cerrar, para poder subir archivos
+    editingClient = data;
+    $("#clientModalTitle").textContent = "Editar cliente";
+    $("#btnDeleteClient").classList.toggle("hidden", !canDeleteClient(data));
+    refreshClientFilesPanel();
+    toast("Cliente creado. Ya puedes subir archivos.");
+    await loadClients();
+    await loadClientFileCounts();
+    renderClients();
   }
-
-  btn.disabled = false;
-  $("#btnSaveClientLabel").textContent = "Guardar";
-
-  if (error) { showClientMsg("No se pudo guardar: " + error.message); return; }
-  closeClientModal();
-  toast(editingClient ? "Cliente actualizado" : "Cliente creado");
-  await loadClients();
-  renderClients();
 };
 
 /* Eliminar */
@@ -847,4 +866,134 @@ function showClientMsg(text) {
   m.textContent = text;
   m.className = "msg msg--error";
   m.classList.remove("hidden");
+}
+
+/* ============================================================
+   FASE 5 — Utilidades + archivos de cliente
+   ============================================================ */
+
+const FILES_BUCKET = "client-files";
+let CLIENT_FILE_COUNT = {}; // { client_id: n }
+
+function normalizeUrl(v) {
+  const s = (v || "").trim();
+  if (!s) return null;
+  if (!/^https?:\/\//i.test(s)) return "https://" + s;
+  return s;
+}
+function fmtSize(bytes) {
+  if (bytes == null) return "";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+function fmtDateTime(iso) {
+  try { return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }); }
+  catch { return ""; }
+}
+function safeName(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+}
+
+async function loadClientFileCounts() {
+  const { data, error } = await sb.from("client_files").select("client_id");
+  CLIENT_FILE_COUNT = {};
+  if (!error && data) data.forEach((r) => { CLIENT_FILE_COUNT[r.client_id] = (CLIENT_FILE_COUNT[r.client_id] || 0) + 1; });
+}
+
+/* ---- Archivos dentro del modal de cliente ---- */
+async function loadClientFiles(clientId) {
+  const listEl = $("#cFilesList");
+  listEl.innerHTML = '<div class="files__empty">Cargando archivos…</div>';
+  const { data, error } = await sb.from("client_files")
+    .select("*").eq("client_id", clientId).order("created_at", { ascending: false });
+  if (error) { listEl.innerHTML = '<div class="files__empty">No se pudieron cargar los archivos.</div>'; return; }
+  renderFilesList(data || []);
+}
+
+function renderFilesList(files) {
+  const listEl = $("#cFilesList");
+  if (!files.length) { listEl.innerHTML = '<div class="files__empty">Aún no hay archivos. Sube el primero abajo.</div>'; return; }
+  listEl.innerHTML = "";
+  files.forEach((f) => {
+    const row = document.createElement("div");
+    row.className = "file-row";
+    row.innerHTML = `
+      <div class="file-row__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      </div>
+      <div class="file-row__main">
+        <div class="file-row__name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+        <div class="file-row__meta">${fmtSize(f.size)} · ${fmtDateTime(f.created_at)}</div>
+      </div>
+      <button class="file-row__act dl" title="Descargar / abrir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </button>
+      <button class="file-row__act del" title="Eliminar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>`;
+    row.querySelector(".dl").onclick = () => downloadFile(f);
+    row.querySelector(".del").onclick = () => deleteFile(f);
+    listEl.appendChild(row);
+  });
+}
+
+async function downloadFile(f) {
+  const { data, error } = await sb.storage.from(FILES_BUCKET).createSignedUrl(f.path, 60);
+  if (error || !data?.signedUrl) { toast("No se pudo abrir el archivo"); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
+}
+
+async function deleteFile(f) {
+  if (!confirm(`¿Eliminar "${f.name}"?`)) return;
+  const { error: sErr } = await sb.storage.from(FILES_BUCKET).remove([f.path]);
+  if (sErr) { toast("No se pudo eliminar del almacén"); return; }
+  await sb.from("client_files").delete().eq("id", f.id);
+  toast("Archivo eliminado");
+  await loadClientFiles(f.client_id);
+  await loadClientFileCounts();
+}
+
+async function handleFileUpload(fileList) {
+  if (!editingClient) { toast("Guarda el cliente primero"); return; }
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  const label = $("#cUploadLabel");
+  const original = label.textContent;
+  $("#cUploadBtn").style.pointerEvents = "none";
+
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    label.innerHTML = `<span class="spinner"></span> Subiendo ${i + 1}/${files.length}…`;
+    const path = `${editingClient.id}/${Date.now()}-${safeName(file.name)}`;
+    const { error: upErr } = await sb.storage.from(FILES_BUCKET).upload(path, file, { upsert: false });
+    if (upErr) { toast(`No se pudo subir ${file.name}`); continue; }
+    const { error: insErr } = await sb.from("client_files").insert({
+      client_id: editingClient.id, name: file.name, path,
+      size: file.size, mime: file.type || null, uploaded_by: currentProfile.id,
+    });
+    if (insErr) { await sb.storage.from(FILES_BUCKET).remove([path]); toast(`Error registrando ${file.name}`); continue; }
+    ok++;
+  }
+
+  label.textContent = original;
+  $("#cUploadBtn").style.pointerEvents = "";
+  $("#cFileInput").value = "";
+  if (ok) toast(ok === 1 ? "Archivo subido" : `${ok} archivos subidos`);
+  await loadClientFiles(editingClient.id);
+  await loadClientFileCounts();
+}
+
+$("#cFileInput").addEventListener("change", (e) => handleFileUpload(e.target.files));
+
+/* Mostrar u ocultar el panel de archivos según si el cliente ya existe */
+function refreshClientFilesPanel() {
+  const exists = !!editingClient;
+  $("#cFilesHint").classList.toggle("hidden", exists);
+  $("#cUploadBtn").classList.toggle("hidden", !exists);
+  if (exists) loadClientFiles(editingClient.id);
+  else $("#cFilesList").innerHTML = "";
 }

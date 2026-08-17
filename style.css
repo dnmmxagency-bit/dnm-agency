@@ -812,3 +812,52 @@ textarea.input { resize: vertical; min-height: 70px; }
 }
 .clients-empty strong { color: var(--text); display: block; font-size: 16px; margin-bottom: 6px; }
 .clients-empty span { font-size: 13px; }
+
+/* ============================================================
+   FASE 5 — Archivos de cliente + enlace de Drive en tareas
+   ============================================================ */
+
+/* Enlace de Drive en la tarjeta de tarea */
+.tcard__drive {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--amber-hi);
+  border: 1px solid var(--amber-a50); background: var(--amber-a08);
+  padding: 3px 8px; text-decoration: none;
+}
+.tcard__drive:hover { background: var(--amber-a15); }
+.tcard__drive svg { width: 12px; height: 12px; }
+
+/* Panel de archivos del cliente */
+.files { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.file-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--border); background: var(--bg-deep);
+  padding: 9px 10px;
+}
+.file-row__icon {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--amber-a08); border: 1px solid var(--amber-a50); color: var(--amber-hi);
+}
+.file-row__icon svg { width: 16px; height: 16px; }
+.file-row__main { flex: 1; min-width: 0; }
+.file-row__name {
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-row__meta { font-size: 11px; color: var(--text-faint); }
+.file-row__act {
+  background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted);
+  width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer;
+  transition: border-color var(--dur), color var(--dur); flex-shrink: 0;
+}
+.file-row__act:hover { border-color: var(--amber); color: var(--amber); }
+.file-row__act.del:hover { border-color: var(--danger); color: #e5b6ac; }
+.file-row__act svg { width: 15px; height: 15px; }
+
+.files__empty { font-size: 12px; color: var(--text-faint); padding: 4px 0 10px; }
+.file-btn { position: relative; overflow: hidden; }
+.files__hint { font-size: 12px; color: var(--text-faint); padding: 6px 0; }
+
+.ccard__badges { display: flex; gap: 10px; align-items: center; }
+.ccard__files { font-size: 12px; color: var(--amber-hi); }

@@ -305,6 +305,11 @@
         </div>
 
         <div class="field">
+          <label for="tDrive">Enlace de Drive del contenido</label>
+          <input class="input" type="url" id="tDrive" placeholder="https://drive.google.com/…" />
+        </div>
+
+        <div class="field">
           <label>Responsables</label>
           <div class="people" id="tPeople">
             <div class="people__empty">Cargando equipo…</div>
@@ -347,6 +352,16 @@
             <input type="checkbox" id="cActive" checked />
             <span class="switch__track"><span class="switch__thumb"></span></span>
             <span class="switch__label">Cliente activo</span>
+          </label>
+        </div>
+
+        <div class="field" id="cFilesField">
+          <label>Archivos del cliente</label>
+          <div class="files" id="cFilesList"></div>
+          <div class="files__hint hidden" id="cFilesHint">Guarda el cliente y el panel de archivos se activará.</div>
+          <label class="btn btn--ghost btn--sm file-btn" id="cUploadBtn">
+            <input type="file" id="cFileInput" multiple hidden />
+            <span id="cUploadLabel">Subir archivo(s)</span>
           </label>
         </div>
       </div>
