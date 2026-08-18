@@ -450,7 +450,10 @@ function openTaskModal(task, prefill, context) {
   // Poblar clientes
   const selC = $("#tCliente");
   selC.innerHTML = '<option value="">— Sin cliente —</option>' +
-    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.active ? "" : " (inactivo)"}</option>`).join("");
+    CLIENTS.map((c) => {
+      const st = c.status || "Activo";
+      return `<option value="${c.id}">${escapeHtml(c.name)}${st !== "Activo" ? ` (${st.toLowerCase()})` : ""}</option>`;
+    }).join("");
 
   // Poblar responsables (checkboxes)
   const people = $("#tPeople");
@@ -759,7 +762,9 @@ function taskCountForClient(id) {
 
 function renderClients() {
   const grid = $("#clientsGrid");
-  const list = clientFilter === "activos" ? CLIENTS.filter((c) => c.active) : CLIENTS;
+  let list = CLIENTS;
+  if (clientFilter === "activos") list = CLIENTS.filter((c) => (c.status || "Activo") === "Activo");
+  else if (clientFilter === "prospectos") list = CLIENTS.filter((c) => c.status === "Prospecto");
 
   $("#clientCount").textContent = `${list.length} ${list.length === 1 ? "cliente" : "clientes"}`;
 
@@ -776,12 +781,15 @@ function renderClients() {
   list.forEach((c) => {
     const n = taskCountForClient(c.id);
     const el = document.createElement("article");
-    el.className = "ccard" + (c.active ? "" : " inactive");
+    const status = c.status || "Activo";
+    el.className = "ccard" + (status === "Pausado" ? " inactive" : "");
+    const stClass = "st-" + status.toLowerCase();
     el.innerHTML = `
       <div class="ccard__head">
         <div class="ccard__name">${escapeHtml(c.name)}</div>
-        <span class="status ${c.active ? "" : "off"}">${c.active ? "Activo" : "Inactivo"}</span>
+        <span class="status ${stClass}">${escapeHtml(status)}</span>
       </div>
+      ${c.industry ? `<div class="ccard__industry">${escapeHtml(c.industry)}</div>` : ""}
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
       <div class="ccard__foot">
         <div class="ccard__badges">
@@ -814,7 +822,8 @@ function openClientModal(client) {
 
   $("#cName").value = client?.name || "";
   $("#cNotes").value = client?.notes || "";
-  $("#cActive").checked = client ? !!client.active : true;
+  $("#cIndustry").value = client?.industry || "";
+  $("#cStatus").value = client?.status || "Activo";
 
   $("#btnDeleteClient").classList.toggle("hidden", !(client && canDeleteClient(client)));
 
@@ -839,10 +848,13 @@ $("#btnSaveClient").onclick = async () => {
   const name = $("#cName").value.trim();
   if (!name) { showClientMsg("Escribe el nombre del cliente."); return; }
 
+  const status = $("#cStatus").value;
   const payload = {
     name,
     notes: $("#cNotes").value.trim() || null,
-    active: $("#cActive").checked,
+    industry: $("#cIndustry").value.trim() || null,
+    status,
+    active: status === "Activo",
   };
 
   const btn = $("#btnSaveClient");
