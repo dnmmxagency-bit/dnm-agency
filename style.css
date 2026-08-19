@@ -456,9 +456,7 @@ textarea.input { resize: vertical; min-height: 70px; }
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  position: sticky; top: 57px;
   background: var(--bg-deep);
-  z-index: 2;
 }
 .column__title {
   font-size: 12px;
@@ -650,7 +648,6 @@ textarea.input { resize: vertical; min-height: 70px; }
 @media (max-width: 780px) {
   .board { scroll-snap-type: x mandatory; }
   .column { flex-basis: 82%; }
-  .column__head { top: 0; }
   .fab { display: flex; }
   .toolbar .btn--newtask { display: none; } /* en móvil usamos el FAB */
 }
