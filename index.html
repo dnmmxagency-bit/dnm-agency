@@ -537,6 +537,15 @@
             <span id="cUploadLabel">Subir archivo(s)</span>
           </label>
         </div>
+
+        <div class="modal-section">Brief de arranque</div>
+        <div class="field">
+          <div class="files__hint hidden" id="cBriefHint">Guarda el cliente para abrir su brief.</div>
+          <button class="btn btn--ghost btn--sm hidden" id="btnOpenBrief" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
+            Abrir brief de arranque
+          </button>
+        </div>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger btn--sm hidden" id="btnDeleteClient" type="button">Eliminar</button>
@@ -650,6 +659,24 @@
         <div class="toolbar__spacer"></div>
         <button class="btn btn--ghost" id="btnCancelGuest" type="button">Cancelar</button>
         <button class="btn btn--primary" id="btnSaveGuest" type="button"><span id="btnSaveGuestLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: Brief de arranque
+       ============================================================ -->
+  <div class="overlay" id="briefOverlay">
+    <div class="modal modal--wide frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="briefModalTitle">Brief de arranque</h3>
+        <button class="modal__x" id="briefModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body" id="briefBody"></div>
+      <div class="modal__foot">
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelBrief" type="button">Cerrar</button>
+        <button class="btn btn--primary" id="btnSaveBrief" type="button"><span id="btnSaveBriefLabel">Guardar brief</span></button>
       </div>
     </div>
   </div>

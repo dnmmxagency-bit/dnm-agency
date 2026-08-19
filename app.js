@@ -1074,6 +1074,8 @@ function refreshClientFilesPanel() {
   const exists = !!editingClient;
   $("#cFilesHint").classList.toggle("hidden", exists);
   $("#cUploadBtn").classList.toggle("hidden", !exists);
+  $("#cBriefHint").classList.toggle("hidden", exists);
+  $("#btnOpenBrief").classList.toggle("hidden", !exists);
   if (exists) loadClientFiles(editingClient.id);
   else $("#cFilesList").innerHTML = "";
 }
@@ -1392,3 +1394,154 @@ function showMsg(sel, text) {
   const m = $(sel);
   m.textContent = text; m.className = "msg msg--error"; m.classList.remove("hidden");
 }
+
+/* ============================================================
+   FASE 10 — Brief de arranque (plantilla DNM por cliente)
+   ============================================================ */
+const BRIEF_SCHEMA = [
+  { title: "1. Preguntas de entrevista", items: [
+    { type: "area", key: "e_historia", label: "Historia y autoridad (cómo llegó, momentos clave, qué enseña mejor, resultados)" },
+    { type: "area", key: "e_mercado", label: "Mercado y audiencia (problema que ve, qué no entiende el mercado, cliente a atraer / evitar)" },
+    { type: "area", key: "e_oferta", label: "Oferta y venta (qué vende, oferta más rentable, objeciones, proceso comercial)" },
+    { type: "area", key: "e_contenido", label: "Contenido (temas que le gustan, temas a evitar, opiniones fuertes, referentes)" },
+  ]},
+  { title: "2. Datos generales", items: [
+    { type: "text", key: "dg_nombre", label: "Nombre completo" },
+    { type: "text", key: "dg_marca", label: "Nombre público / marca personal" },
+    { type: "text", key: "dg_empresa", label: "Empresa / organización" },
+    { type: "text", key: "dg_puesto", label: "Puesto actual" },
+    { type: "text", key: "dg_industria", label: "Industria" },
+    { type: "text", key: "dg_ciudad", label: "Ciudad / país" },
+    { type: "text", key: "dg_tel", label: "Teléfono" },
+    { type: "text", key: "dg_email", label: "Email" },
+    { type: "text", key: "dg_redes", label: "Redes sociales actuales" },
+    { type: "text", key: "dg_web", label: "Sitio web / landing" },
+    { type: "text", key: "dg_responsable", label: "Responsable interno DNM" },
+    { type: "text", key: "dg_inicio", label: "Fecha de inicio" },
+    { type: "text", key: "dg_estado", label: "Estado del proyecto" },
+  ]},
+  { title: "3. Brief inicial", items: [
+    { type: "area", key: "bi_contexto", label: "Contexto general (quién es, trayectoria, diferenciador, por qué ahora, qué espera lograr)" },
+    { type: "check", key: "bi_objetivos", label: "Objetivos principales", options: ["Posicionamiento como referente","Generación de prospectos","Atracción de oportunidades comerciales","Autoridad para vender consultoría / servicios","Reputación ejecutiva","Diferenciación frente a competidores","Lanzamiento de producto / servicio","Fortalecimiento de confianza"] },
+    { type: "area", key: "bi_prioridades", label: "Prioridades del cliente (1, 2, 3)" },
+  ]},
+  { title: "4. Audiencia objetivo", items: [
+    { type: "area", key: "au_ideal", label: "Cliente ideal (a quién atraer, cargo del decisor, industria, tamaño, poder adquisitivo, problema, deseo, objeciones)" },
+    { type: "rows", key: "au_segmentos", label: "Segmentos de audiencia", cols: ["Segmento","Descripción","Prioridad"], count: 3 },
+  ]},
+  { title: "5. Oferta y modelo comercial", items: [
+    { type: "area", key: "of_principal", label: "Oferta principal (servicio, problema que resuelve, resultado, ticket, duración, canal y proceso de venta)" },
+    { type: "area", key: "of_secundarias", label: "Ofertas secundarias" },
+    { type: "check", key: "of_conversion", label: "Conversión esperada", options: ["DM / mensaje directo","Formulario","Llamada diagnóstica","WhatsApp","Evento / webinar","Newsletter","Landing page"] },
+  ]},
+  { title: "6. Canales y ecosistema digital", items: [
+    { type: "rows", key: "ca_tabla", label: "Canales", cols: ["Canal","Estado actual","Objetivo"], fixedRows: ["Instagram","LinkedIn","TikTok","YouTube","Facebook","Sitio web","Newsletter","WhatsApp / CRM"] },
+    { type: "text", key: "ca_principal", label: "Canal principal recomendado" },
+    { type: "text", key: "ca_secundario", label: "Canal secundario recomendado" },
+  ]},
+  { title: "7. Plan de implementación", items: [
+    { type: "check", key: "pl_f1", label: "Fase 1 — Diagnóstico y estrategia", options: ["Levantamiento de información","Auditoría de presencia digital","Definición de posicionamiento","Definición de audiencia","Definición de pilares de contenido"] },
+    { type: "check", key: "pl_f2", label: "Fase 2 — Producción base", options: ["Guías de contenido","Guiones iniciales","Diseño visual","Optimización de perfiles","Producción de fotos / videos"] },
+    { type: "check", key: "pl_f3", label: "Fase 3 — Publicación y validación", options: ["Calendario de contenido","Publicación de primeras piezas","Medición inicial","Ajustes de mensaje","Ajustes de CTA"] },
+    { type: "check", key: "pl_f4", label: "Fase 4 — Escalamiento", options: ["Campañas pagadas","Automatización de leads","Lead magnet","Embudo comercial","Reportes y optimización"] },
+  ]},
+  { title: "8. KPIs y métricas", items: [
+    { type: "rows", key: "kp_tabla", label: "Métricas", cols: ["Métrica","Meta","Resultado"], fixedRows: ["Alcance","Crecimiento de audiencia","Engagement","Guardados","Compartidos","DMs recibidos","Leads generados","Llamadas agendadas","Ventas / cierres","Costo por lead"] },
+  ]},
+];
+
+let briefClient = null;
+const briefOverlay = $("#briefOverlay");
+
+function openBrief(client) {
+  if (!client) return;
+  briefClient = client;
+  const data = client.brief && typeof client.brief === "object" ? client.brief : {};
+  // Prefill de datos generales desde la ficha, si están vacíos
+  const defaults = {
+    dg_nombre: client.name, dg_empresa: client.empresa, dg_puesto: client.puesto,
+    dg_email: client.email, dg_industria: client.industry,
+  };
+  $("#briefModalTitle").textContent = "Brief — " + (client.name || "Cliente");
+  $("#briefBody").innerHTML = BRIEF_SCHEMA.map((sec, i) => `
+    <details class="brief-sec" ${i === 0 ? "open" : ""}>
+      <summary>${sec.title}</summary>
+      <div class="brief-sec__body">
+        ${sec.items.map((it) => briefFieldHtml(it, data, defaults)).join("")}
+      </div>
+    </details>`).join("");
+  briefOverlay.classList.add("open");
+}
+
+function briefFieldHtml(it, data, defaults) {
+  const val = (data[it.key] != null && data[it.key] !== "") ? data[it.key] : (defaults[it.key] || "");
+  if (it.type === "text")
+    return `<div class="brief-field"><label>${it.label}</label><input class="input" data-bk="${it.key}" data-type="text" value="${escapeHtml(val)}"></div>`;
+  if (it.type === "area")
+    return `<div class="brief-field"><label>${it.label}</label><textarea class="input" data-bk="${it.key}" data-type="area">${escapeHtml(val || "")}</textarea></div>`;
+  if (it.type === "check") {
+    const sel = new Set(Array.isArray(data[it.key]) ? data[it.key] : []);
+    return `<div class="brief-field"><label>${it.label}</label><div class="brief-check" data-bk="${it.key}" data-type="check">${it.options.map((o) => `<label><input type="checkbox" value="${escapeHtml(o)}" ${sel.has(o) ? "checked" : ""}> ${escapeHtml(o)}</label>`).join("")}</div></div>`;
+  }
+  if (it.type === "rows") {
+    const cols = it.cols, fixed = it.fixedRows || null;
+    const rows = Array.isArray(data[it.key]) ? data[it.key] : [];
+    const n = fixed ? fixed.length : (it.count || 3);
+    const gt = fixed ? `120px repeat(${cols.length - 1},1fr)` : `repeat(${cols.length},1fr)`;
+    let h = `<div class="brief-field"><label>${it.label}</label><div class="brief-rows" data-bk="${it.key}" data-type="rows" data-fixed="${fixed ? 1 : 0}">`;
+    h += `<div class="brief-row" style="grid-template-columns:${gt}">${cols.map((c) => `<div class="rowlabel" style="font-weight:600;color:var(--text-faint)">${escapeHtml(c)}</div>`).join("")}</div>`;
+    for (let r = 0; r < n; r++) {
+      const rd = rows[r] || [];
+      h += `<div class="brief-row" data-row="${r}" style="grid-template-columns:${gt}">`;
+      if (fixed) {
+        h += `<div class="rowlabel">${escapeHtml(fixed[r])}</div>`;
+        for (let c = 1; c < cols.length; c++) h += `<input class="input" data-col="${c - 1}" value="${escapeHtml(rd[c - 1] || "")}">`;
+      } else {
+        for (let c = 0; c < cols.length; c++) h += `<input class="input" data-col="${c}" value="${escapeHtml(rd[c] || "")}" placeholder="${escapeHtml(cols[c])}">`;
+      }
+      h += `</div>`;
+    }
+    h += `</div></div>`;
+    return h;
+  }
+  return "";
+}
+
+function collectBrief() {
+  const out = {};
+  $("#briefBody").querySelectorAll("[data-bk]").forEach((el) => {
+    const key = el.dataset.bk, type = el.dataset.type;
+    if (type === "text" || type === "area") out[key] = el.value.trim();
+    else if (type === "check") out[key] = Array.from(el.querySelectorAll("input:checked")).map((i) => i.value);
+    else if (type === "rows") {
+      const rows = [];
+      el.querySelectorAll(".brief-row[data-row]").forEach((rowEl) => {
+        const vals = Array.from(rowEl.querySelectorAll("input")).map((i) => i.value.trim());
+        rows.push(vals);
+      });
+      out[key] = rows;
+    }
+  });
+  return out;
+}
+
+function closeBrief() { briefOverlay.classList.remove("open"); briefClient = null; }
+
+$("#btnOpenBrief").onclick = () => openBrief(editingClient);
+$("#briefModalClose").onclick = closeBrief;
+$("#btnCancelBrief").onclick = closeBrief;
+briefOverlay.addEventListener("click", (e) => { if (e.target === briefOverlay) closeBrief(); });
+
+$("#btnSaveBrief").onclick = async () => {
+  if (!briefClient) return;
+  const brief = collectBrief();
+  const btn = $("#btnSaveBrief"); btn.disabled = true; $("#btnSaveBriefLabel").innerHTML = '<span class="spinner"></span>';
+  const { error } = await sb.from("clients").update({ brief }).eq("id", briefClient.id);
+  btn.disabled = false; $("#btnSaveBriefLabel").textContent = "Guardar brief";
+  if (error) { toast("No se pudo guardar el brief"); return; }
+  briefClient.brief = brief;
+  const inList = CLIENTS.find((c) => c.id === briefClient.id); if (inList) inList.brief = brief;
+  if (editingClient && editingClient.id === briefClient.id) editingClient.brief = brief;
+  toast("Brief guardado");
+  closeBrief();
+};

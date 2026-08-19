@@ -1088,3 +1088,30 @@ textarea.input { resize: vertical; min-height: 70px; }
 .gcard__ig { font-size: 12px; color: var(--amber-hi); }
 .gcard__notes { font-size: 12px; color: var(--text-muted);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ============================================================
+   FASE 10 — Brief de arranque
+   ============================================================ */
+.modal--wide { max-width: 720px; }
+
+.brief-sec { border: 1px solid var(--border); margin-bottom: 10px; background: var(--bg-deep); }
+.brief-sec > summary {
+  cursor: pointer; padding: 12px 14px; list-style: none;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.02em; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brief-sec > summary::-webkit-details-marker { display: none; }
+.brief-sec > summary::after { content: "+"; color: var(--amber); font-size: 16px; }
+.brief-sec[open] > summary::after { content: "–"; }
+.brief-sec[open] > summary { border-bottom: 1px solid var(--border); }
+.brief-sec__body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.brief-field label { display: block; font-size: 11px; letter-spacing: 0.04em; color: var(--text-faint); margin-bottom: 5px; text-transform: none; }
+.brief-check { display: flex; flex-direction: column; gap: 6px; }
+.brief-check label { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text); cursor: pointer; text-transform: none; letter-spacing: normal; margin: 0; }
+.brief-check input { accent-color: var(--amber); width: 15px; height: 15px; }
+
+.brief-rows { display: flex; flex-direction: column; gap: 6px; }
+.brief-row { display: grid; gap: 6px; align-items: center; }
+.brief-row .rowlabel { font-size: 12px; color: var(--text-muted); }
+.brief-row .input { padding: 7px 9px; font-size: 13px; }
