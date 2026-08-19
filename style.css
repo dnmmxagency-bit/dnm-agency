@@ -1180,3 +1180,8 @@ textarea.input { resize: vertical; min-height: 70px; }
 
 /* Fase 17 — links en la lista de contenido */
 .litem__links { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+
+/* Fase 18 — piezas de contenido en el Tablero */
+.tcard--pieza { border-left: 3px solid var(--amber); }
+.pieza-tag { color: var(--amber-hi); font-weight: 700; font-size: 12px; margin-right: 2px; }
+.pieza-chip { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); font-size: 10px; }

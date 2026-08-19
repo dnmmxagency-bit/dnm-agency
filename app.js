@@ -361,7 +361,9 @@ function renderBoard() {
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
   const source = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
-  $("#taskCount").textContent = `${source.length} ${source.length === 1 ? "tarea" : "tareas"}`;
+  const pieces = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
+  const total = source.length + pieces.length;
+  $("#taskCount").textContent = `${total} ${total === 1 ? "actividad" : "actividades"}`;
 
   const counts = {};
   TASK_STATUS.forEach((s) => (counts[s] = 0));
@@ -371,6 +373,13 @@ function renderBoard() {
     counts[st]++;
     const body = board.querySelector(`.column__body[data-col="${st}"]`);
     if (body) body.appendChild(taskCardEl(t));
+  });
+
+  pieces.forEach((c) => {
+    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    counts[st]++;
+    const body = board.querySelector(`.column__body[data-col="${st}"]`);
+    if (body) body.appendChild(contentCardEl(c));
   });
 
   TASK_STATUS.forEach((s) => {
@@ -468,6 +477,68 @@ function taskCardEl(t) {
   return card;
 }
 
+/* Tarjeta de PIEZA de contenido dentro del Tablero (mismo registro que Producción) */
+function contentCardEl(c) {
+  const card = document.createElement("article");
+  card.className = "tcard tcard--pieza";
+  card.dataset.id = c.id;
+  card.setAttribute("draggable", "true");
+
+  const cliente = CLIENTS.find((x) => x.id === c.client_id);
+  const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+  const etapa = ESTADOS.includes(c.estado) ? c.estado : "Agendado en calendario";
+  const overdue = isOverdue(c.delivery_date, st);
+
+  const ids = Array.isArray(c.assignee_ids) ? c.assignee_ids : [];
+  let avatars = "";
+  ids.slice(0, 3).forEach((id) => { avatars += `<span class="mini" title="${escapeHtml(memberName(id))}">${escapeHtml(initials(memberName(id)))}</span>`; });
+  if (ids.length > 3) avatars += `<span class="mini more">+${ids.length - 3}</span>`;
+
+  card.innerHTML = `
+    <div class="tcard__title"><span class="pieza-tag">🎬 ${c.chapter != null ? "#" + c.chapter : "Pieza"}</span> ${escapeHtml(c.title)}</div>
+    <div class="tcard__selects">
+      <select class="tstatus" data-status-select title="Estatus">${TASK_STATUS.map((s) => `<option ${s === st ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}</select>
+      <select class="tstage" data-stage-select title="Etapa de producción">${ESTADOS.map((e) => `<option ${e === etapa ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
+    </div>
+    <div class="tcard__row">
+      ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
+      ${c.delivery_date ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}" title="Fecha de entrega">Entrega ${fmtDate(c.delivery_date)}</span>` : ""}
+      ${c.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(c.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
+      ${c.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(c.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
+    </div>
+    <div class="tcard__foot">
+      <span class="chip pieza-chip">Pieza</span>
+      <span class="assignees">${avatars || '<span style="font-size:11px;color:var(--text-faint)">Sin editores</span>'}</span>
+    </div>
+  `;
+
+  card.addEventListener("click", () => openContentModal(c));
+  card.querySelector("[data-drive]")?.addEventListener("click", (e) => e.stopPropagation());
+  card.querySelector("[data-reels]")?.addEventListener("click", (e) => e.stopPropagation());
+
+  const statusSel = card.querySelector("[data-status-select]");
+  if (statusSel) {
+    statusSel.addEventListener("click", (e) => e.stopPropagation());
+    statusSel.addEventListener("mousedown", (e) => e.stopPropagation());
+    statusSel.addEventListener("change", async (e) => { e.stopPropagation(); await updateContentEstatus(c, statusSel.value); });
+  }
+  const stageSel = card.querySelector("[data-stage-select]");
+  if (stageSel) {
+    stageSel.addEventListener("click", (e) => e.stopPropagation());
+    stageSel.addEventListener("mousedown", (e) => e.stopPropagation());
+    stageSel.addEventListener("change", async (e) => { e.stopPropagation(); await updateContentEstado(c, stageSel.value); });
+  }
+
+  card.addEventListener("dragstart", (e) => {
+    card.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", c.id);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+
+  return card;
+}
+
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -490,8 +561,12 @@ function buildBoardColumns() {
       col.classList.remove("dragover");
       const id = e.dataTransfer.getData("text/plain");
       const task = TASKS.find((t) => t.id === id);
-      if (!task || taskStatus(task) === estado) return;
-      await updateTaskEstado(task, estado);
+      if (task) { if (taskStatus(task) !== estado) await updateTaskEstado(task, estado); return; }
+      const piece = CONTENT.find((c) => c.id === id);
+      if (piece) {
+        const cur = TASK_STATUS.includes(piece.estatus) ? piece.estatus : "Por hacer";
+        if (cur !== estado) await updateContentEstatus(piece, estado);
+      }
     });
   });
 }
@@ -514,6 +589,26 @@ async function updateTaskProceso(task, proceso) {
     .update({ proceso, updated_at: new Date().toISOString() })
     .eq("id", task.id);
   if (error) { task.proceso = prev; renderBoard(); toast("No se pudo cambiar la etapa"); }
+}
+
+async function updateContentEstatus(piece, estatus) {
+  const prev = piece.estatus;
+  piece.estatus = estatus;            // optimista
+  renderBoard(); renderContent();
+  const { error } = await sb.from("content_items")
+    .update({ estatus, updated_at: new Date().toISOString() })
+    .eq("id", piece.id);
+  if (error) { piece.estatus = prev; renderBoard(); renderContent(); toast("No se pudo mover la pieza"); }
+}
+
+async function updateContentEstado(piece, estado) {
+  const prev = piece.estado;
+  piece.estado = estado;              // optimista (etapa de producción)
+  renderBoard(); renderContent();
+  const { error } = await sb.from("content_items")
+    .update({ estado, updated_at: new Date().toISOString() })
+    .eq("id", piece.id);
+  if (error) { piece.estado = prev; renderBoard(); renderContent(); toast("No se pudo cambiar la etapa"); }
 }
 
 /* ============================================================
@@ -1357,6 +1452,10 @@ function openContentModal(item) {
   const selE = $("#coEstado");
   selE.innerHTML = CONTENT_ESTADOS.map((e) => `<option>${e}</option>`).join("");
   selE.value = item?.estado || "Agendado en calendario";
+  // estatus (aparece en el Tablero)
+  const selSt = $("#coEstatus");
+  selSt.innerHTML = TASK_STATUS.map((s) => `<option>${s}</option>`).join("");
+  selSt.value = (item && TASK_STATUS.includes(item.estatus)) ? item.estatus : "Por hacer";
 
   // cliente
   const selC = $("#coClient");
@@ -1412,6 +1511,7 @@ $("#btnSaveContent").onclick = async () => {
     title,
     chapter: chapterRaw === "" ? null : Number(chapterRaw),
     estado: $("#coEstado").value,
+    estatus: $("#coEstatus").value,
     record_date: $("#coRecord").value || null,
     release_date: $("#coRelease").value || null,
     delivery_date: $("#coDelivery").value || null,
@@ -1431,7 +1531,7 @@ $("#btnSaveContent").onclick = async () => {
   btn.disabled = false; $("#btnSaveContentLabel").textContent = "Guardar";
   if (error) { showMsg("#contentMsg", "No se pudo guardar: " + error.message); return; }
   closeContentModal(); toast(editingContent ? "Pieza actualizada" : "Pieza creada");
-  await loadContent(); renderContent();
+  await loadContent(); renderContent(); renderBoard();
 };
 
 $("#btnDeleteContent").onclick = async () => {
@@ -1440,7 +1540,7 @@ $("#btnDeleteContent").onclick = async () => {
   const { error } = await sb.from("content_items").delete().eq("id", editingContent.id);
   if (error) { showMsg("#contentMsg", "No se pudo eliminar: " + error.message); return; }
   closeContentModal(); toast("Pieza eliminada");
-  await loadContent(); renderContent();
+  await loadContent(); renderContent(); renderBoard();
 };
 
 /* ---- Invitados ---- */
