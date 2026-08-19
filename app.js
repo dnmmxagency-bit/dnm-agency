@@ -218,6 +218,10 @@ function switchView(view) {
     (view === "actividades" ? calAct : calGrab).render();
   }
   if (view === "clientes") renderClients();
+  if (view === "contenido") { renderContent(); renderGuests(); }
+  // El botón flotante (+) solo tiene sentido en el tablero de tareas
+  const fab = $("#fabNewTask");
+  if (fab) fab.style.display = view === "tablero" ? "" : "none";
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 $$(".nav__item, .bottomnav__item").forEach((b) => {
@@ -271,7 +275,7 @@ let taskNotes = [];     // notas/correcciones en edición dentro del modal
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
-  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts()]);
+  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent()]);
   await loadTasks();
 }
 
@@ -1127,3 +1131,264 @@ $("#btnAddNote").onclick = () => {
   renderTaskNotes();
   input.focus();
 };
+
+/* ============================================================
+   FASE 9 — Contenido (piezas/episodios) + Invitados
+   ============================================================ */
+
+const CONTENT_ESTADOS = [
+  "Agendado en calendario", "Grabación", "Edición", "Cortes", "Portada",
+  "Revisión", "Correcciones", "Por programar", "Programado para publicar",
+  "Publicado", "Cancelado",
+];
+const CONTENT_DONE = ["Programado para publicar", "Publicado"];
+
+let GUESTS = [];
+let CONTENT = [];
+let editingContent = null;
+let editingGuest = null;
+let contentFilterEstado = "";
+
+async function loadGuests() {
+  const { data, error } = await sb.from("guests").select("*").order("name");
+  GUESTS = error ? [] : (data || []);
+}
+async function loadContent() {
+  const { data, error } = await sb.from("content_items").select("*").order("created_at", { ascending: false });
+  CONTENT = error ? [] : (data || []);
+}
+
+function guestName(id) {
+  const g = GUESTS.find((x) => x.id === id);
+  return g ? g.name : "—";
+}
+
+/* ---- Pestañas Piezas / Invitados ---- */
+$("#contentTabs").querySelectorAll("button").forEach((b) => {
+  b.onclick = () => {
+    $("#contentTabs").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+    const tab = b.dataset.tab;
+    $("#tab-piezas").classList.toggle("hidden", tab !== "piezas");
+    $("#tab-invitados").classList.toggle("hidden", tab !== "invitados");
+    if (tab === "piezas") renderContent(); else renderGuests();
+  };
+});
+
+/* ---- Filtro por estado ---- */
+function fillContentFilter() {
+  const sel = $("#contentFilter");
+  if (sel.options.length > 1) return; // ya está lleno
+  CONTENT_ESTADOS.forEach((e) => {
+    const o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  sel.onchange = () => { contentFilterEstado = sel.value; renderContent(); };
+}
+
+/* ---- Render de piezas ---- */
+function renderContent() {
+  fillContentFilter();
+  const box = $("#contentList");
+  let list = CONTENT;
+  if (contentFilterEstado) list = CONTENT.filter((c) => c.estado === contentFilterEstado);
+
+  $("#contentCount").textContent = `${list.length} ${list.length === 1 ? "pieza" : "piezas"}`;
+
+  if (!list.length) {
+    box.innerHTML = `<div class="board-empty"><strong>${CONTENT.length ? "Sin piezas en este filtro" : "Aún no hay piezas"}</strong><span>${CONTENT.length ? "Cambia el filtro de estado." : 'Toca "Nueva pieza" para crear la primera.'}</span></div>`;
+    return;
+  }
+
+  box.innerHTML = "";
+  list.forEach((c) => {
+    const cliente = CLIENTS.find((x) => x.id === c.client_id);
+    const guests = (Array.isArray(c.guest_ids) ? c.guest_ids : []).map(guestName).filter((n) => n !== "—");
+    const metaParts = [];
+    if (cliente) metaParts.push(cliente.name);
+    if (guests.length) metaParts.push("con " + guests.join(", "));
+    const estadoCls = CONTENT_DONE.includes(c.estado) ? "done" : (c.estado === "Cancelado" ? "muted" : "");
+
+    const row = document.createElement("div");
+    row.className = "litem" + (c.estado === "Cancelado" ? " cancel" : "");
+    row.innerHTML = `
+      ${c.cover_url ? `<img class="litem__cover" src="${escapeHtml(c.cover_url)}" alt="" onerror="this.style.display='none'">` : `<div class="litem__chap">${c.chapter != null ? "#" + c.chapter : "—"}</div>`}
+      <div class="litem__main">
+        <div class="litem__title">${c.chapter != null && c.cover_url ? `<span style="color:var(--text-faint)">#${c.chapter} · </span>` : ""}${escapeHtml(c.title)}</div>
+        <div class="litem__meta">${metaParts.length ? escapeHtml(metaParts.join(" · ")) : "Sin cliente"}</div>
+      </div>
+      <div class="litem__right">
+        <span class="estado-chip ${estadoCls}">${escapeHtml(c.estado)}</span>
+        <div class="litem__dates">
+          ${c.record_date ? `<div><span class="lbl">Grab:</span> ${fmtDate(c.record_date)}</div>` : ""}
+          ${c.release_date ? `<div><span class="lbl">Estreno:</span> ${fmtDate(c.release_date)}</div>` : ""}
+        </div>
+      </div>`;
+    row.onclick = () => openContentModal(c);
+    box.appendChild(row);
+  });
+}
+
+/* ---- Modal de pieza ---- */
+const contentOverlay = $("#contentOverlay");
+
+function openContentModal(item) {
+  editingContent = item || null;
+  $("#contentMsg").classList.add("hidden");
+  $("#contentModalTitle").textContent = item ? "Editar pieza" : "Nueva pieza";
+  $("#btnSaveContentLabel").textContent = "Guardar";
+
+  // estado
+  const selE = $("#coEstado");
+  selE.innerHTML = CONTENT_ESTADOS.map((e) => `<option>${e}</option>`).join("");
+  selE.value = item?.estado || "Agendado en calendario";
+
+  // cliente
+  const selC = $("#coClient");
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  selC.value = item?.client_id || "";
+
+  // invitados (checkboxes)
+  const gbox = $("#coGuests");
+  if (!GUESTS.length) {
+    gbox.innerHTML = '<div class="people__empty">Aún no hay invitados. Créalos en la pestaña Invitados.</div>';
+  } else {
+    const sel = new Set(item && Array.isArray(item.guest_ids) ? item.guest_ids : []);
+    gbox.innerHTML = GUESTS.map((g) => `
+      <label class="person">
+        <input type="checkbox" value="${g.id}" ${sel.has(g.id) ? "checked" : ""}/>
+        <span class="person__name">${escapeHtml(g.name)}</span>
+      </label>`).join("");
+  }
+
+  $("#coTitle").value = item?.title || "";
+  $("#coChapter").value = item?.chapter ?? "";
+  $("#coRecord").value = item?.record_date || "";
+  $("#coRelease").value = item?.release_date || "";
+  $("#coCover").value = item?.cover_url || "";
+  $("#coDrive").value = item?.drive_url || "";
+  $("#coNotes").value = item?.notes || "";
+
+  $("#btnDeleteContent").classList.toggle("hidden", !(item && (item.owner_id === currentProfile?.id || currentProfile?.role === "owner")));
+
+  contentOverlay.classList.add("open");
+  setTimeout(() => $("#coTitle").focus(), 50);
+}
+function closeContentModal() { contentOverlay.classList.remove("open"); editingContent = null; }
+
+$("#btnNewContent").onclick = () => openContentModal(null);
+$("#contentModalClose").onclick = closeContentModal;
+$("#btnCancelContent").onclick = closeContentModal;
+contentOverlay.addEventListener("click", (e) => { if (e.target === contentOverlay) closeContentModal(); });
+
+$("#btnSaveContent").onclick = async () => {
+  const title = $("#coTitle").value.trim();
+  if (!title) { showMsg("#contentMsg", "Escribe un título."); return; }
+  const chapterRaw = $("#coChapter").value.trim();
+  const guest_ids = Array.from($("#coGuests").querySelectorAll("input:checked")).map((i) => i.value);
+  const payload = {
+    title,
+    chapter: chapterRaw === "" ? null : Number(chapterRaw),
+    estado: $("#coEstado").value,
+    record_date: $("#coRecord").value || null,
+    release_date: $("#coRelease").value || null,
+    client_id: $("#coClient").value || null,
+    guest_ids,
+    cover_url: normalizeUrl($("#coCover").value),
+    drive_url: normalizeUrl($("#coDrive").value),
+    notes: $("#coNotes").value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  const btn = $("#btnSaveContent"); btn.disabled = true; $("#btnSaveContentLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingContent) ({ error } = await sb.from("content_items").update(payload).eq("id", editingContent.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("content_items").insert(payload)); }
+  btn.disabled = false; $("#btnSaveContentLabel").textContent = "Guardar";
+  if (error) { showMsg("#contentMsg", "No se pudo guardar: " + error.message); return; }
+  closeContentModal(); toast(editingContent ? "Pieza actualizada" : "Pieza creada");
+  await loadContent(); renderContent();
+};
+
+$("#btnDeleteContent").onclick = async () => {
+  if (!editingContent) return;
+  if (!confirm("¿Eliminar esta pieza?")) return;
+  const { error } = await sb.from("content_items").delete().eq("id", editingContent.id);
+  if (error) { showMsg("#contentMsg", "No se pudo eliminar: " + error.message); return; }
+  closeContentModal(); toast("Pieza eliminada");
+  await loadContent(); renderContent();
+};
+
+/* ---- Invitados ---- */
+function renderGuests() {
+  const grid = $("#guestsGrid");
+  $("#guestCount").textContent = `${GUESTS.length} ${GUESTS.length === 1 ? "invitado" : "invitados"}`;
+  if (!GUESTS.length) {
+    grid.innerHTML = `<div class="clients-empty" style="grid-column:1/-1"><strong>Aún no hay invitados</strong><span>Toca "Nuevo invitado" para agregar el primero.</span></div>`;
+    return;
+  }
+  grid.innerHTML = "";
+  GUESTS.forEach((g) => {
+    const el = document.createElement("article");
+    el.className = "gcard";
+    el.innerHTML = `
+      <div class="gcard__name">${escapeHtml(g.name)}</div>
+      ${g.instagram ? `<div class="gcard__ig">${escapeHtml(g.instagram)}</div>` : ""}
+      ${g.notes ? `<div class="gcard__notes">${escapeHtml(g.notes)}</div>` : ""}`;
+    el.onclick = () => openGuestModal(g);
+    grid.appendChild(el);
+  });
+}
+
+const guestOverlay = $("#guestOverlay");
+function openGuestModal(g) {
+  editingGuest = g || null;
+  $("#guestMsg").classList.add("hidden");
+  $("#guestModalTitle").textContent = g ? "Editar invitado" : "Nuevo invitado";
+  $("#btnSaveGuestLabel").textContent = "Guardar";
+  $("#guName").value = g?.name || "";
+  $("#guInstagram").value = g?.instagram || "";
+  $("#guEmail").value = g?.email || "";
+  $("#guNotes").value = g?.notes || "";
+  $("#btnDeleteGuest").classList.toggle("hidden", !(g && (g.owner_id === currentProfile?.id || currentProfile?.role === "owner")));
+  guestOverlay.classList.add("open");
+  setTimeout(() => $("#guName").focus(), 50);
+}
+function closeGuestModal() { guestOverlay.classList.remove("open"); editingGuest = null; }
+
+$("#btnNewGuest").onclick = () => openGuestModal(null);
+$("#guestModalClose").onclick = closeGuestModal;
+$("#btnCancelGuest").onclick = closeGuestModal;
+guestOverlay.addEventListener("click", (e) => { if (e.target === guestOverlay) closeGuestModal(); });
+
+$("#btnSaveGuest").onclick = async () => {
+  const name = $("#guName").value.trim();
+  if (!name) { showMsg("#guestMsg", "Escribe el nombre."); return; }
+  const payload = {
+    name,
+    instagram: $("#guInstagram").value.trim() || null,
+    email: $("#guEmail").value.trim() || null,
+    notes: $("#guNotes").value.trim() || null,
+  };
+  const btn = $("#btnSaveGuest"); btn.disabled = true; $("#btnSaveGuestLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingGuest) ({ error } = await sb.from("guests").update(payload).eq("id", editingGuest.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("guests").insert(payload)); }
+  btn.disabled = false; $("#btnSaveGuestLabel").textContent = "Guardar";
+  if (error) { showMsg("#guestMsg", "No se pudo guardar: " + error.message); return; }
+  closeGuestModal(); toast(editingGuest ? "Invitado actualizado" : "Invitado creado");
+  await loadGuests(); renderGuests();
+};
+
+$("#btnDeleteGuest").onclick = async () => {
+  if (!editingGuest) return;
+  if (!confirm("¿Eliminar este invitado?")) return;
+  const { error } = await sb.from("guests").delete().eq("id", editingGuest.id);
+  if (error) { showMsg("#guestMsg", "No se pudo eliminar: " + error.message); return; }
+  closeGuestModal(); toast("Invitado eliminado");
+  await loadGuests(); renderGuests();
+};
+
+/* Utilidad de mensajes en modales */
+function showMsg(sel, text) {
+  const m = $(sel);
+  m.textContent = text; m.className = "msg msg--error"; m.classList.remove("hidden");
+}

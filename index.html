@@ -129,6 +129,10 @@
         </button>
 
         <div class="nav__group-label">Producción</div>
+        <button class="nav__item" data-view="contenido" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M7 8l4 2.5L7 13z" fill="currentColor" stroke="none"/></svg>
+          Contenido
+        </button>
         <button class="nav__item" data-view="grabacion" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
           Calendario de grabación
@@ -192,6 +196,49 @@
           <div class="cal" id="cal-actividades"></div>
         </section>
 
+        <!-- VISTA: Contenido (piezas + invitados) -->
+        <section class="view" id="view-contenido">
+          <div class="page-head">
+            <div class="eyebrow">Producción</div>
+            <h2 class="page-title">Contenido</h2>
+            <p class="page-desc">Tus piezas y episodios con su pipeline de producción, fechas de grabación y estreno, e invitados.</p>
+          </div>
+
+          <div class="seg subtabs" id="contentTabs">
+            <button data-tab="piezas" class="active" type="button">Piezas</button>
+            <button data-tab="invitados" type="button">Invitados</button>
+          </div>
+
+          <!-- Pestaña Piezas -->
+          <div id="tab-piezas">
+            <div class="toolbar">
+              <button class="btn btn--primary" id="btnNewContent" type="button">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                Nueva pieza
+              </button>
+              <select class="input" id="contentFilter" style="width:auto">
+                <option value="">Todos los estados</option>
+              </select>
+              <div class="toolbar__spacer"></div>
+              <span class="count-pill" id="contentCount">0 piezas</span>
+            </div>
+            <div class="content-list" id="contentList"></div>
+          </div>
+
+          <!-- Pestaña Invitados -->
+          <div id="tab-invitados" class="hidden">
+            <div class="toolbar">
+              <button class="btn btn--primary" id="btnNewGuest" type="button">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                Nuevo invitado
+              </button>
+              <div class="toolbar__spacer"></div>
+              <span class="count-pill" id="guestCount">0 invitados</span>
+            </div>
+            <div class="guests-grid" id="guestsGrid"></div>
+          </div>
+        </section>
+
         <!-- VISTA: Calendario de grabación -->
         <section class="view" id="view-grabacion">
           <div class="page-head">
@@ -249,6 +296,10 @@
         <button class="bottomnav__item" data-view="grabacion" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
           Grabación
+        </button>
+        <button class="bottomnav__item" data-view="contenido" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Contenido
         </button>
         <button class="bottomnav__item" data-view="clientes" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -492,6 +543,113 @@
         <div class="toolbar__spacer"></div>
         <button class="btn btn--ghost" id="btnCancelClient" type="button">Cancelar</button>
         <button class="btn btn--primary" id="btnSaveClient" type="button"><span id="btnSaveClientLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: crear / editar pieza de contenido
+       ============================================================ -->
+  <div class="overlay" id="contentOverlay">
+    <div class="modal frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="contentModalTitle">Nueva pieza</h3>
+        <button class="modal__x" id="contentModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="contentMsg" class="msg hidden"></div>
+
+        <div class="field">
+          <label for="coTitle">Título</label>
+          <input class="input" type="text" id="coTitle" placeholder="Ej. Episodio con Marisela" />
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="coChapter">Capítulo</label>
+            <input class="input" type="number" id="coChapter" placeholder="Nº" />
+          </div>
+          <div class="field">
+            <label for="coEstado">Estado</label>
+            <select class="input" id="coEstado"></select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="coRecord">Fecha de grabación</label>
+            <input class="input" type="date" id="coRecord" />
+          </div>
+          <div class="field">
+            <label for="coRelease">Fecha de estreno</label>
+            <input class="input" type="date" id="coRelease" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="coClient">Cliente</label>
+          <select class="input" id="coClient"><option value="">— Sin cliente —</option></select>
+        </div>
+        <div class="field">
+          <label>Invitados</label>
+          <div class="people" id="coGuests"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="coCover">Portada (enlace de imagen)</label>
+            <input class="input" type="url" id="coCover" placeholder="https://…" />
+          </div>
+          <div class="field">
+            <label for="coDrive">Enlace de Drive</label>
+            <input class="input" type="url" id="coDrive" placeholder="https://drive.google.com/…" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="coNotes">Notas</label>
+          <textarea class="input" id="coNotes" placeholder="Notas de la pieza…"></textarea>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger btn--sm hidden" id="btnDeleteContent" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelContent" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveContent" type="button"><span id="btnSaveContentLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: crear / editar invitado
+       ============================================================ -->
+  <div class="overlay" id="guestOverlay">
+    <div class="modal frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="guestModalTitle">Nuevo invitado</h3>
+        <button class="modal__x" id="guestModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="guestMsg" class="msg hidden"></div>
+        <div class="field">
+          <label for="guName">Nombre</label>
+          <input class="input" type="text" id="guName" placeholder="Nombre del invitado" />
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="guInstagram">Instagram</label>
+            <input class="input" type="text" id="guInstagram" placeholder="@usuario" />
+          </div>
+          <div class="field">
+            <label for="guEmail">Correo</label>
+            <input class="input" type="email" id="guEmail" placeholder="correo@ejemplo.com" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="guNotes">Notas</label>
+          <textarea class="input" id="guNotes" placeholder="Bio, temas, contacto…"></textarea>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger btn--sm hidden" id="btnDeleteGuest" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelGuest" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveGuest" type="button"><span id="btnSaveGuestLabel">Guardar</span></button>
       </div>
     </div>
   </div>
