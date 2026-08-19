@@ -367,20 +367,30 @@
       <div class="modal__body">
         <div id="clientMsg" class="msg hidden"></div>
 
+        <div class="modal-section">Identidad</div>
         <div class="field">
           <label for="cName">Nombre</label>
-          <input class="input" type="text" id="cName" placeholder="Ej. Grupo Fénix" />
+          <input class="input" type="text" id="cName" placeholder="Persona o marca (ej. Grupo Fénix)" />
         </div>
-
-        <div class="field">
-          <label for="cNotes">Notas</label>
-          <textarea class="input" id="cNotes" placeholder="Contacto, marca, detalles útiles…"></textarea>
-        </div>
-
         <div class="grid-2">
           <div class="field">
+            <label for="cEmpresa">Empresa</label>
+            <input class="input" type="text" id="cEmpresa" placeholder="Razón social o empresa" />
+          </div>
+          <div class="field">
             <label for="cIndustry">Giro / industria</label>
-            <input class="input" type="text" id="cIndustry" placeholder="Ej. Restaurantes, Inmobiliaria…" />
+            <input class="input" type="text" id="cIndustry" placeholder="Ej. Restaurantes, Salud…" />
+          </div>
+        </div>
+
+        <div class="modal-section">Clasificación</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="cLabel">Etiqueta</label>
+            <select class="input" id="cLabel">
+              <option>Cliente</option>
+              <option>Prospecto</option>
+            </select>
           </div>
           <div class="field">
             <label for="cStatus">Estado</label>
@@ -390,6 +400,81 @@
               <option>Pausado</option>
             </select>
           </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="cType">Tipo de cliente</label>
+            <select class="input" id="cType">
+              <option value="">— Sin definir —</option>
+              <option>Executive Personal Brand</option>
+              <option>Empresa C-Suite Protagónico</option>
+              <option>Dual Brand</option>
+              <option>On-Air Brand (Podcast)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cFunnel">Etapa (funnel)</label>
+            <select class="input" id="cFunnel">
+              <option>Nuevo</option>
+              <option>Contactado</option>
+              <option>Calificado</option>
+              <option>Propuesta</option>
+              <option>Negociación</option>
+              <option>Ganado</option>
+              <option>Perdido</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-section">Contacto</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="cEmail">Correo</label>
+            <input class="input" type="email" id="cEmail" placeholder="correo@cliente.com" />
+          </div>
+          <div class="field">
+            <label for="cPosition">Posición / cargo</label>
+            <input class="input" type="text" id="cPosition" placeholder="Ej. Director general" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="cSource">Fuente de contacto</label>
+            <select class="input" id="cSource">
+              <option value="">— Sin definir —</option>
+              <option>Correo</option>
+              <option>Facebook</option>
+              <option>Instagram</option>
+              <option>Página</option>
+              <option>Recomendación</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cContactDate">Fecha de contacto</label>
+            <input class="input" type="date" id="cContactDate" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="cResponsible">Responsable</label>
+            <select class="input" id="cResponsible">
+              <option value="">— Sin asignar —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cLeadership">Liderazgo</label>
+            <input class="input" type="text" id="cLeadership" placeholder="Quién decide / lidera" />
+          </div>
+        </div>
+
+        <div class="modal-section">Detalle</div>
+        <div class="field">
+          <label for="cNotes">Notas</label>
+          <textarea class="input" id="cNotes" placeholder="Detalles útiles del cliente…"></textarea>
+        </div>
+        <div class="field">
+          <label for="cReason">Motivo</label>
+          <input class="input" type="text" id="cReason" placeholder="Motivo de contacto o de cierre/pérdida" />
         </div>
 
         <div class="field" id="cFilesField">

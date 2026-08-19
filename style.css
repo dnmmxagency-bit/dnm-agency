@@ -1009,3 +1009,21 @@ textarea.input { resize: vertical; min-height: 70px; }
 .status.st-activo    { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); }
 .status.st-prospecto { border-color: var(--amber-a50); color: var(--amber-hi); background: transparent; }
 .status.st-pausado   { border-color: var(--border-strong); color: var(--text-faint); background: transparent; }
+
+/* ============================================================
+   FASE 8 — Mini-CRM: secciones del modal + chips del cliente
+   ============================================================ */
+.modal-section {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--amber); font-weight: 700;
+  margin: 20px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.modal-section:first-of-type { margin-top: 4px; }
+.ccard__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cchip {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+  padding: 2px 7px; border: 1px solid var(--border-strong); color: var(--text-muted);
+  white-space: nowrap;
+}
+.cchip.label-prospecto { border-color: var(--amber-a50); color: var(--amber-hi); }
+.cchip.funnel { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); }

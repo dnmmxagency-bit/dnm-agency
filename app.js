@@ -281,7 +281,7 @@ async function loadMembers() {
 }
 
 async function loadClients() {
-  const { data, error } = await sb.from("clients").select("id,name,active").order("name");
+  const { data, error } = await sb.from("clients").select("*").order("name");
   CLIENTS = error ? [] : (data || []);
 }
 
@@ -784,12 +784,19 @@ function renderClients() {
     const status = c.status || "Activo";
     el.className = "ccard" + (status === "Pausado" ? " inactive" : "");
     const stClass = "st-" + status.toLowerCase();
+    const subtitle = [c.empresa, c.industry].filter(Boolean).join(" · ");
+    const typeShort = (c.client_type || "").replace(" (Podcast)", "");
     el.innerHTML = `
       <div class="ccard__head">
         <div class="ccard__name">${escapeHtml(c.name)}</div>
         <span class="status ${stClass}">${escapeHtml(status)}</span>
       </div>
-      ${c.industry ? `<div class="ccard__industry">${escapeHtml(c.industry)}</div>` : ""}
+      ${subtitle ? `<div class="ccard__industry">${escapeHtml(subtitle)}</div>` : ""}
+      <div class="ccard__chips">
+        ${c.label ? `<span class="cchip ${c.label === "Prospecto" ? "label-prospecto" : ""}">${escapeHtml(c.label)}</span>` : ""}
+        ${c.funnel ? `<span class="cchip funnel">${escapeHtml(c.funnel)}</span>` : ""}
+        ${typeShort ? `<span class="cchip">${escapeHtml(typeShort)}</span>` : ""}
+      </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
       <div class="ccard__foot">
         <div class="ccard__badges">
@@ -821,9 +828,25 @@ function openClientModal(client) {
   $("#btnSaveClientLabel").textContent = "Guardar";
 
   $("#cName").value = client?.name || "";
-  $("#cNotes").value = client?.notes || "";
+  $("#cEmpresa").value = client?.empresa || "";
   $("#cIndustry").value = client?.industry || "";
+  $("#cLabel").value = client?.label || "Cliente";
   $("#cStatus").value = client?.status || "Activo";
+  $("#cType").value = client?.client_type || "";
+  $("#cFunnel").value = client?.funnel || "Nuevo";
+  $("#cEmail").value = client?.email || "";
+  $("#cPosition").value = client?.puesto || "";
+  $("#cSource").value = client?.source || "";
+  $("#cContactDate").value = client?.contact_date || "";
+  $("#cLeadership").value = client?.liderazgo || "";
+  $("#cNotes").value = client?.notes || "";
+  $("#cReason").value = client?.reason || "";
+
+  // Responsable: lista del equipo
+  const selR = $("#cResponsible");
+  selR.innerHTML = '<option value="">— Sin asignar —</option>' +
+    MEMBERS.map((m) => `<option value="${m.id}">${escapeHtml(m.name || m.email)}</option>`).join("");
+  selR.value = client?.responsible_id || "";
 
   $("#btnDeleteClient").classList.toggle("hidden", !(client && canDeleteClient(client)));
 
@@ -851,10 +874,21 @@ $("#btnSaveClient").onclick = async () => {
   const status = $("#cStatus").value;
   const payload = {
     name,
-    notes: $("#cNotes").value.trim() || null,
+    empresa: $("#cEmpresa").value.trim() || null,
     industry: $("#cIndustry").value.trim() || null,
+    label: $("#cLabel").value,
     status,
     active: status === "Activo",
+    client_type: $("#cType").value || null,
+    funnel: $("#cFunnel").value,
+    email: $("#cEmail").value.trim() || null,
+    puesto: $("#cPosition").value.trim() || null,
+    source: $("#cSource").value || null,
+    contact_date: $("#cContactDate").value || null,
+    responsible_id: $("#cResponsible").value || null,
+    liderazgo: $("#cLeadership").value.trim() || null,
+    notes: $("#cNotes").value.trim() || null,
+    reason: $("#cReason").value.trim() || null,
   };
 
   const btn = $("#btnSaveClient");
