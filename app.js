@@ -377,7 +377,7 @@ function taskCardEl(t) {
   card.innerHTML = `
     <div class="tcard__title">${escapeHtml(t.title)}</div>
     <div class="tcard__row">
-      <span class="chip chip--proceso">${escapeHtml(t.proceso || "Planeación")}</span>
+      <span class="chip chip--proceso">${escapeHtml(t.proceso || "Agendado en calendario")}</span>
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
@@ -474,7 +474,12 @@ function openTaskModal(task, prefill, context) {
 
   // Valores
   $("#tTitle").value     = task?.title || "";
-  $("#tProceso").value   = task?.proceso || "Planeación";
+  // Etapa de producción = mismas etapas que Contenido (fuente única)
+  const selP = $("#tProceso");
+  selP.innerHTML = CONTENT_ESTADOS.map((e) => `<option>${e}</option>`).join("");
+  const curP = task?.proceso;
+  if (curP && !CONTENT_ESTADOS.includes(curP)) selP.insertAdjacentHTML("afterbegin", `<option>${escapeHtml(curP)}</option>`);
+  selP.value = curP || "Agendado en calendario";
   $("#tEstado").value    = task?.estado || "Pendiente";
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
@@ -731,7 +736,7 @@ function createCalendar(mountId, opts) {
 
 // Instancias
 let calAct = null;   // todas las tareas con fecha
-let calGrab = null;  // solo "Por grabar"
+let calGrab = null;  // solo "Grabación"
 
 function initCalendars() {
   if (!calAct) {
@@ -741,8 +746,8 @@ function initCalendars() {
   }
   if (!calGrab) {
     calGrab = createCalendar("cal-grabacion", {
-      filter: (t) => t.proceso === "Por grabar",
-      newProceso: "Por grabar",
+      filter: (t) => t.proceso === "Grabación",
+      newProceso: "Grabación",
       context: "grabacion",
     });
   }
