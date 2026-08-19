@@ -272,6 +272,18 @@ const ESTADOS = [
 ];
 const DONE_ESTADOS = ["Publicado", "Cancelado"];
 
+// Agrupación del tablero en fases (columnas) — cada tarjeta guarda su etapa exacta
+const PHASES = [
+  { key: "pendiente",   label: "Pendiente",   stages: ["Agendado en calendario"] },
+  { key: "produccion",  label: "Producción",  stages: ["Grabación", "Edición", "Cortes", "Portada"] },
+  { key: "revision",    label: "Revisión",    stages: ["Revisión", "Correcciones"] },
+  { key: "publicacion", label: "Publicación", stages: ["Por programar", "Programado para publicar", "Publicado"] },
+  { key: "cancelado",   label: "Cancelado",   stages: ["Cancelado"] },
+];
+function phaseOfStage(stage) {
+  return PHASES.find((p) => p.stages.includes(stage)) || PHASES[0];
+}
+
 let MEMBERS = [];   // [{id,name,email,role}]
 let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
@@ -336,21 +348,21 @@ function renderBoard() {
   $("#taskCount").textContent = `${TASKS.length} ${TASKS.length === 1 ? "tarea" : "tareas"}`;
 
   const counts = {};
-  ESTADOS.forEach((e) => (counts[e] = 0));
+  PHASES.forEach((p) => (counts[p.key] = 0));
 
   TASKS.forEach((t) => {
-    const estado = ESTADOS.includes(t.estado) ? t.estado : ESTADOS[0];
-    counts[estado]++;
-    const body = board.querySelector(`.column__body[data-col="${estado}"]`);
+    const phase = phaseOfStage(t.estado);
+    counts[phase.key]++;
+    const body = board.querySelector(`.column__body[data-col="${phase.key}"]`);
     if (body) body.appendChild(taskCardEl(t));
   });
 
-  ESTADOS.forEach((e) => {
-    const col = board.querySelector(`.column[data-estado="${e}"]`);
+  PHASES.forEach((p) => {
+    const col = board.querySelector(`.column[data-phase="${p.key}"]`);
     if (!col) return;
-    col.querySelector(".column__count").textContent = counts[e];
+    col.querySelector(".column__count").textContent = counts[p.key];
     const body = col.querySelector(".column__body");
-    if (counts[e] === 0) {
+    if (counts[p.key] === 0) {
       const empty = document.createElement("div");
       empty.className = "col-empty";
       empty.textContent = "Sin tareas";
@@ -380,6 +392,7 @@ function taskCardEl(t) {
   card.innerHTML = `
     <div class="tcard__title">${escapeHtml(t.title)}</div>
     <div class="tcard__row">
+      <select class="tstage" data-stage-select title="Etapa">${ESTADOS.map((e) => `<option ${e === (t.estado || ESTADOS[0]) ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
@@ -401,6 +414,17 @@ function taskCardEl(t) {
   card.addEventListener("click", () => openTaskModal(t));
   card.querySelector("[data-drive]")?.addEventListener("click", (e) => e.stopPropagation());
 
+  // Selector de etapa exacta en la tarjeta
+  const stageSel = card.querySelector("[data-stage-select]");
+  if (stageSel) {
+    stageSel.addEventListener("click", (e) => e.stopPropagation());
+    stageSel.addEventListener("mousedown", (e) => e.stopPropagation());
+    stageSel.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      await updateTaskEstado(t, stageSel.value);
+    });
+  }
+
   // Arrastrar y soltar (escritorio)
   card.addEventListener("dragstart", (e) => {
     card.classList.add("dragging");
@@ -417,16 +441,16 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/* ---- Construcción dinámica de columnas del tablero ---- */
+/* ---- Construcción dinámica de columnas del tablero (por fase) ---- */
 function buildBoardColumns() {
   const board = $("#board");
-  board.innerHTML = ESTADOS.map((e) => `
-    <div class="column" data-estado="${escapeHtml(e)}">
-      <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(e)}</span><span class="column__count">0</span></div>
-      <div class="column__body" data-col="${escapeHtml(e)}"></div>
+  board.innerHTML = PHASES.map((p) => `
+    <div class="column" data-phase="${p.key}">
+      <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(p.label)}</span><span class="column__count">0</span></div>
+      <div class="column__body" data-col="${p.key}"></div>
     </div>`).join("");
   board.querySelectorAll(".column").forEach((col) => {
-    const estado = col.dataset.estado;
+    const phase = PHASES.find((p) => p.key === col.dataset.phase);
     col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("dragover"); });
     col.addEventListener("dragleave", () => col.classList.remove("dragover"));
     col.addEventListener("drop", async (e) => {
@@ -434,8 +458,10 @@ function buildBoardColumns() {
       col.classList.remove("dragover");
       const id = e.dataTransfer.getData("text/plain");
       const task = TASKS.find((t) => t.id === id);
-      if (!task || task.estado === estado) return;
-      await updateTaskEstado(task, estado);
+      if (!task) return;
+      // si ya está en esa fase, no cambiar la etapa fina; si no, entra a la primera etapa de la fase
+      if (phase.stages.includes(task.estado)) return;
+      await updateTaskEstado(task, phase.stages[0]);
     });
   });
 }
