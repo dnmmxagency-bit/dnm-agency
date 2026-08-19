@@ -382,7 +382,13 @@ function taskCardEl(t) {
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
-      ${(() => { const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null; return pz ? `<span class="chip" title="${escapeHtml(pz.title)}">🎬 ${pz.chapter != null ? "#" + pz.chapter : "Ep"}</span>` : ""; })()}
+      ${(() => {
+        const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null;
+        if (!pz) return "";
+        let h = `<span class="chip" title="${escapeHtml(pz.title)}">🎬 ${pz.chapter != null ? "#" + pz.chapter : "Ep"}</span>`;
+        if (pz.delivery_date) h += `<span class="chip chip--due" title="Fecha de entrega del episodio">Entrega ${fmtDate(pz.delivery_date)}</span>`;
+        return h;
+      })()}
     </div>
     <div class="tcard__foot">
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
@@ -1230,6 +1236,7 @@ function renderContent() {
         <div class="litem__dates">
           ${c.record_date ? `<div><span class="lbl">Grab:</span> ${fmtDate(c.record_date)}</div>` : ""}
           ${c.release_date ? `<div><span class="lbl">Estreno:</span> ${fmtDate(c.release_date)}</div>` : ""}
+          ${c.delivery_date ? `<div><span class="lbl">Entrega:</span> ${fmtDate(c.delivery_date)}</div>` : ""}
         </div>
       </div>`;
     row.onclick = () => openContentModal(c);
@@ -1260,7 +1267,7 @@ function openContentModal(item) {
   // invitados (desplegable)
   coGuestsSel = (item && Array.isArray(item.guest_ids)) ? item.guest_ids.slice() : [];
   makeMultiSelect($("#coGuests"), GUESTS.map((g) => ({ id: g.id, name: g.name })), coGuestsSel,
-    { avatar: false, placeholder: "Agregar invitado…", emptyMsg: "Aún no hay invitados. Créalos en la pestaña Invitados." });
+    { avatar: false, search: true, placeholder: "Buscar invitado…", emptyMsg: "Aún no hay invitados. Créalos en la pestaña Invitados." });
 
   // editores (desplegable con avatares)
   coEditorsSel = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
@@ -1271,6 +1278,7 @@ function openContentModal(item) {
   $("#coChapter").value = item?.chapter ?? "";
   $("#coRecord").value = item?.record_date || "";
   $("#coRelease").value = item?.release_date || "";
+  $("#coDelivery").value = item?.delivery_date || "";
   $("#coCover").value = item?.cover_url || "";
   $("#coDrive").value = item?.drive_url || "";
   $("#coNotes").value = item?.notes || "";
@@ -1305,6 +1313,7 @@ $("#btnSaveContent").onclick = async () => {
     estado: $("#coEstado").value,
     record_date: $("#coRecord").value || null,
     release_date: $("#coRelease").value || null,
+    delivery_date: $("#coDelivery").value || null,
     client_id: $("#coClient").value || null,
     guest_ids,
     assignee_ids,
@@ -1570,29 +1579,77 @@ let coEditorsSel = [];
 function makeMultiSelect(container, options, selectedIds, opts) {
   opts = opts || {};
   const avatar = !!opts.avatar;
+  const search = !!opts.search;
   const placeholder = opts.placeholder || "Agregar…";
   const emptyMsg = opts.emptyMsg || null;
+  const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   container.className = "ms-wrap";
 
-  function render() {
-    if (!options.length && emptyMsg) { container.innerHTML = `<div class="ms-empty">${escapeHtml(emptyMsg)}</div>`; return; }
-    const chips = selectedIds.map((id) => {
+  function chipsHtml() {
+    return selectedIds.map((id) => {
       const o = options.find((x) => x.id === id);
       const name = o ? o.name : "—";
       return `<span class="ms-chip ${avatar ? "has-ava" : ""}">${avatar ? `<span class="ms-ava">${escapeHtml(initials(name))}</span>` : ""}${escapeHtml(name)}<button type="button" class="ms-x" data-id="${id}" aria-label="Quitar">&times;</button></span>`;
     }).join("");
-    const remaining = options.filter((o) => !selectedIds.includes(o.id));
-    const optsHtml = `<option value="">${escapeHtml(placeholder)}</option>` +
-      remaining.map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
-    container.innerHTML = `<div class="ms-chips">${chips}</div><select class="input ms-select">${optsHtml}</select>`;
-
-    const sel = container.querySelector(".ms-select");
-    if (!remaining.length) { sel.disabled = true; }
-    sel.onchange = () => { if (sel.value) { selectedIds.push(sel.value); render(); } };
+  }
+  function bindChips() {
     container.querySelectorAll(".ms-x").forEach((b) => {
       b.onclick = () => { const i = selectedIds.indexOf(b.dataset.id); if (i >= 0) selectedIds.splice(i, 1); render(); };
     });
+  }
+  function add(id) { if (!selectedIds.includes(id)) selectedIds.push(id); render(); }
+
+  function render() {
+    if (!options.length && emptyMsg) { container.innerHTML = `<div class="ms-empty">${escapeHtml(emptyMsg)}</div>`; return; }
+    const remaining = options.filter((o) => !selectedIds.includes(o.id));
+
+    if (search) {
+      container.innerHTML = `<div class="ms-chips">${chipsHtml()}</div><div class="ms-search"><input type="text" class="input ms-input" placeholder="${escapeHtml(placeholder)}" autocomplete="off"><div class="ms-suggest hidden"></div></div>`;
+      bindChips();
+      const input = container.querySelector(".ms-input");
+      const box = container.querySelector(".ms-suggest");
+      let active = -1;
+
+      function results() {
+        const q = norm(input.value.trim());
+        const list = remaining.filter((o) => !q || norm(o.name).includes(q));
+        return list.slice(0, 30);
+      }
+      function paint() {
+        const list = results();
+        active = -1;
+        if (!input.value.trim() && !list.length) { box.classList.add("hidden"); return; }
+        box.innerHTML = list.length
+          ? list.map((o, i) => `<div class="ms-opt" data-id="${o.id}" data-i="${i}">${escapeHtml(o.name)}</div>`).join("")
+          : `<div class="ms-opt ms-opt--none">Sin coincidencias</div>`;
+        box.classList.remove("hidden");
+        box.querySelectorAll(".ms-opt[data-id]").forEach((el) => {
+          el.addEventListener("mousedown", (e) => { e.preventDefault(); add(el.dataset.id); });
+        });
+      }
+      input.addEventListener("focus", paint);
+      input.addEventListener("input", paint);
+      input.addEventListener("keydown", (e) => {
+        const items = Array.from(box.querySelectorAll(".ms-opt[data-id]"));
+        if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(active + 1, items.length - 1); items.forEach((el, i) => el.classList.toggle("active", i === active)); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(active - 1, 0); items.forEach((el, i) => el.classList.toggle("active", i === active)); }
+        else if (e.key === "Enter") { e.preventDefault(); const pick = active >= 0 ? items[active] : items[0]; if (pick) add(pick.dataset.id); }
+        else if (e.key === "Escape") { box.classList.add("hidden"); }
+      });
+      input.addEventListener("blur", () => setTimeout(() => box.classList.add("hidden"), 120));
+      setTimeout(() => input.focus(), 0);
+      return;
+    }
+
+    // modo desplegable simple
+    const optsHtml = `<option value="">${escapeHtml(placeholder)}</option>` +
+      remaining.map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+    container.innerHTML = `<div class="ms-chips">${chipsHtml()}</div><select class="input ms-select">${optsHtml}</select>`;
+    bindChips();
+    const sel = container.querySelector(".ms-select");
+    if (!remaining.length) sel.disabled = true;
+    sel.onchange = () => { if (sel.value) add(sel.value); };
   }
   render();
 }

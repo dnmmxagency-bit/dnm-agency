@@ -1137,3 +1137,23 @@ textarea.input { resize: vertical; min-height: 70px; }
 .ms-x { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .ms-x:hover { color: #e5b6ac; }
 .ms-empty { font-size: 12px; color: var(--text-faint); padding: 2px 0 8px; }
+
+/* ============================================================
+   FASE 13 — Buscador con autocompletado (invitados)
+   ============================================================ */
+.ms-search { position: relative; }
+.ms-input { width: 100%; }
+.ms-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 3px); z-index: 80;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  max-height: 190px; overflow-y: auto; box-shadow: var(--shadow-pop);
+}
+.ms-suggest.hidden { display: none; }
+.ms-opt { padding: 9px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); }
+.ms-opt:last-child { border-bottom: none; }
+.ms-opt.active, .ms-opt:hover { background: var(--surface-3); color: var(--amber-hi); }
+.ms-opt--none { color: var(--text-faint); cursor: default; }
+.ms-opt--none:hover { background: transparent; color: var(--text-faint); }
+
+/* Fase 14 — chip de fecha de entrega en tarjetas de tarea */
+.chip.chip--due { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); }
