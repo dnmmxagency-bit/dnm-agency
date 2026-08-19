@@ -7,7 +7,7 @@
    IMPORTANTE: sube el número de versión (v1 -> v2 -> ...) cada vez
    que cambies el código, para forzar que se limpie el caché viejo.
    ============================================================ */
-const CACHE_NAME = "dnm-agency-v19";
+const CACHE_NAME = "dnm-agency-v20";
 
 const CORE_ASSETS = [
   "./",

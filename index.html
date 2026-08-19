@@ -166,24 +166,7 @@
             <span class="count-pill" id="taskCount">0 tareas</span>
           </div>
 
-          <div class="board" id="board">
-            <div class="column" data-estado="Pendiente">
-              <div class="column__head"><span class="column__title"><span class="dot"></span>Pendiente</span><span class="column__count">0</span></div>
-              <div class="column__body" data-col="Pendiente"></div>
-            </div>
-            <div class="column" data-estado="En curso">
-              <div class="column__head"><span class="column__title"><span class="dot"></span>En curso</span><span class="column__count">0</span></div>
-              <div class="column__body" data-col="En curso"></div>
-            </div>
-            <div class="column" data-estado="Hecho">
-              <div class="column__head"><span class="column__title"><span class="dot"></span>Hecho</span><span class="column__count">0</span></div>
-              <div class="column__body" data-col="Hecho"></div>
-            </div>
-            <div class="column" data-estado="Cancelado">
-              <div class="column__head"><span class="column__title"><span class="dot"></span>Cancelado</span><span class="column__count">0</span></div>
-              <div class="column__body" data-col="Cancelado"></div>
-            </div>
-          </div>
+          <div class="board" id="board"><!-- columnas generadas dinámicamente desde ESTADOS --></div>
         </section>
 
         <!-- VISTA: Calendario de actividades -->
@@ -328,32 +311,10 @@
           <input class="input" type="text" id="tTitle" placeholder="Ej. Grabar testimonial cliente X" />
         </div>
 
-        <div class="field" id="fieldProceso">
-          <label for="tProceso">Etapa de producción</label>
-          <select class="input" id="tProceso">
-            <option>Agendado en calendario</option>
-            <option>Grabación</option>
-            <option>Edición</option>
-            <option>Cortes</option>
-            <option>Portada</option>
-            <option>Revisión</option>
-            <option>Correcciones</option>
-            <option>Por programar</option>
-            <option>Programado para publicar</option>
-            <option>Publicado</option>
-            <option>Cancelado</option>
-          </select>
-        </div>
-
         <div class="grid-2" id="rowEstadoPrio">
           <div class="field">
-            <label for="tEstado">Estado (columna)</label>
-            <select class="input" id="tEstado">
-              <option>Pendiente</option>
-              <option>En curso</option>
-              <option>Hecho</option>
-              <option>Cancelado</option>
-            </select>
+            <label for="tEstado">Etapa (columna del tablero)</label>
+            <select class="input" id="tEstado"></select>
           </div>
           <div class="field">
             <label for="tPrioridad">Prioridad</label>

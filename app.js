@@ -265,7 +265,12 @@ if ("serviceWorker" in navigator) {
    FASE 2 — Tareas y tablero
    ============================================================ */
 
-const ESTADOS = ["Pendiente", "En curso", "Hecho", "Cancelado"];
+const ESTADOS = [
+  "Agendado en calendario", "Grabación", "Edición", "Cortes", "Portada",
+  "Revisión", "Correcciones", "Por programar", "Programado para publicar",
+  "Publicado", "Cancelado",
+];
+const DONE_ESTADOS = ["Publicado", "Cancelado"];
 
 let MEMBERS = [];   // [{id,name,email,role}]
 let CLIENTS = [];   // [{id,name,active}]
@@ -313,7 +318,7 @@ function fmtDate(d) {
   return dt.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 function isOverdue(d, estado) {
-  if (!d || estado === "Hecho" || estado === "Cancelado") return false;
+  if (!d || DONE_ESTADOS.includes(estado)) return false;
   const today = new Date(); today.setHours(0,0,0,0);
   const [y, mo, da] = d.split("-").map(Number);
   return new Date(y, mo - 1, da) < today;
@@ -325,26 +330,24 @@ function canDelete(task) {
 /* ---- Render del tablero ---- */
 function renderBoard() {
   const board = $("#board");
-  // limpiar columnas
-  ESTADOS.forEach((e) => {
-    const body = board.querySelector(`.column__body[data-col="${e}"]`);
-    body.innerHTML = "";
-  });
+  if (!board.querySelector(".column")) buildBoardColumns();
+  board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
   $("#taskCount").textContent = `${TASKS.length} ${TASKS.length === 1 ? "tarea" : "tareas"}`;
 
-  const counts = { "Pendiente":0, "En curso":0, "Hecho":0, "Cancelado":0 };
+  const counts = {};
+  ESTADOS.forEach((e) => (counts[e] = 0));
 
   TASKS.forEach((t) => {
-    const estado = ESTADOS.includes(t.estado) ? t.estado : "Pendiente";
+    const estado = ESTADOS.includes(t.estado) ? t.estado : ESTADOS[0];
     counts[estado]++;
     const body = board.querySelector(`.column__body[data-col="${estado}"]`);
-    body.appendChild(taskCardEl(t));
+    if (body) body.appendChild(taskCardEl(t));
   });
 
-  // contadores + vacíos
   ESTADOS.forEach((e) => {
     const col = board.querySelector(`.column[data-estado="${e}"]`);
+    if (!col) return;
     col.querySelector(".column__count").textContent = counts[e];
     const body = col.querySelector(".column__body");
     if (counts[e] === 0) {
@@ -377,7 +380,6 @@ function taskCardEl(t) {
   card.innerHTML = `
     <div class="tcard__title">${escapeHtml(t.title)}</div>
     <div class="tcard__row">
-      <span class="chip chip--proceso">${escapeHtml(t.proceso || "Agendado en calendario")}</span>
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
@@ -415,20 +417,28 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/* ---- Drag & drop sobre las columnas ---- */
-$$(".column").forEach((col) => {
-  const estado = col.dataset.estado;
-  col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("dragover"); });
-  col.addEventListener("dragleave", () => col.classList.remove("dragover"));
-  col.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    col.classList.remove("dragover");
-    const id = e.dataTransfer.getData("text/plain");
-    const task = TASKS.find((t) => t.id === id);
-    if (!task || task.estado === estado) return;
-    await updateTaskEstado(task, estado);
+/* ---- Construcción dinámica de columnas del tablero ---- */
+function buildBoardColumns() {
+  const board = $("#board");
+  board.innerHTML = ESTADOS.map((e) => `
+    <div class="column" data-estado="${escapeHtml(e)}">
+      <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(e)}</span><span class="column__count">0</span></div>
+      <div class="column__body" data-col="${escapeHtml(e)}"></div>
+    </div>`).join("");
+  board.querySelectorAll(".column").forEach((col) => {
+    const estado = col.dataset.estado;
+    col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("dragover"); });
+    col.addEventListener("dragleave", () => col.classList.remove("dragover"));
+    col.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      col.classList.remove("dragover");
+      const id = e.dataTransfer.getData("text/plain");
+      const task = TASKS.find((t) => t.id === id);
+      if (!task || task.estado === estado) return;
+      await updateTaskEstado(task, estado);
+    });
   });
-});
+}
 
 async function updateTaskEstado(task, estado) {
   const prev = task.estado;
@@ -456,7 +466,6 @@ function openTaskModal(task, prefill, context) {
   // Formulario simplificado para el calendario de grabación:
   // sin proceso, estado ni prioridad.
   const grabacion = context === "grabacion";
-  $("#fieldProceso").classList.toggle("hidden", grabacion);
   $("#rowEstadoPrio").classList.toggle("hidden", grabacion);
 
   // Poblar clientes
@@ -474,13 +483,12 @@ function openTaskModal(task, prefill, context) {
 
   // Valores
   $("#tTitle").value     = task?.title || "";
-  // Etapa de producción = mismas etapas que Contenido (fuente única)
-  const selP = $("#tProceso");
-  selP.innerHTML = CONTENT_ESTADOS.map((e) => `<option>${e}</option>`).join("");
-  const curP = task?.proceso;
-  if (curP && !CONTENT_ESTADOS.includes(curP)) selP.insertAdjacentHTML("afterbegin", `<option>${escapeHtml(curP)}</option>`);
-  selP.value = curP || "Agendado en calendario";
-  $("#tEstado").value    = task?.estado || "Pendiente";
+  // Etapa (columna del tablero) = mismas etapas que Contenido
+  const selEstado = $("#tEstado");
+  selEstado.innerHTML = ESTADOS.map((e) => `<option>${e}</option>`).join("");
+  const curE = task?.estado;
+  if (curE && !ESTADOS.includes(curE)) selEstado.insertAdjacentHTML("afterbegin", `<option>${escapeHtml(curE)}</option>`);
+  selEstado.value = curE || "Agendado en calendario";
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
@@ -497,10 +505,10 @@ function openTaskModal(task, prefill, context) {
   $("#tNoteInput").value = "";
   renderTaskNotes();
 
-  // Prefill al crear desde el calendario (fecha y/o proceso)
+  // Prefill al crear desde el calendario (fecha y/o etapa)
   if (!task && prefill) {
     if (prefill.due_date) $("#tFecha").value = prefill.due_date;
-    if (prefill.proceso)  $("#tProceso").value = prefill.proceso;
+    if (prefill.estado)   $("#tEstado").value = prefill.estado;
   }
 
   // Botón eliminar solo si puede
@@ -531,7 +539,7 @@ $("#btnSaveTask").onclick = async () => {
   const assignee_ids = taskAssignees.slice();
   const payload = {
     title,
-    proceso: $("#tProceso").value,
+    proceso: $("#tEstado").value,
     estado: $("#tEstado").value,
     prioridad: $("#tPrioridad").value,
     due_date: $("#tFecha").value || null,
@@ -675,7 +683,7 @@ function createCalendar(mountId, opts) {
       const list = (byDay[key] || []);
 
       let pills = list.slice(0, maxPills).map((t) => {
-        const done = t.estado === "Hecho" || t.estado === "Cancelado";
+        const done = DONE_ESTADOS.includes(t.estado);
         return `<div class="cal__pill ${done ? "done" : ""}" data-prioridad="${escapeHtml(t.prioridad || "Media")}" data-id="${t.id}" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>`;
       }).join("");
       if (list.length > maxPills) pills += `<div class="cal__more">+${list.length - maxPills} más</div>`;
@@ -721,7 +729,7 @@ function createCalendar(mountId, opts) {
       };
     });
     mount.querySelectorAll(".cal__cell").forEach((c) => {
-      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso }, opts.context);
+      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, estado: opts.newEstado }, opts.context);
     });
   }
 
@@ -746,8 +754,8 @@ function initCalendars() {
   }
   if (!calGrab) {
     calGrab = createCalendar("cal-grabacion", {
-      filter: (t) => t.proceso === "Grabación",
-      newProceso: "Grabación",
+      filter: (t) => t.estado === "Grabación",
+      newEstado: "Grabación",
       context: "grabacion",
     });
   }
@@ -1149,11 +1157,7 @@ $("#btnAddNote").onclick = () => {
    FASE 9 — Contenido (piezas/episodios) + Invitados
    ============================================================ */
 
-const CONTENT_ESTADOS = [
-  "Agendado en calendario", "Grabación", "Edición", "Cortes", "Portada",
-  "Revisión", "Correcciones", "Por programar", "Programado para publicar",
-  "Publicado", "Cancelado",
-];
+const CONTENT_ESTADOS = ESTADOS;
 const CONTENT_DONE = ["Programado para publicar", "Publicado"];
 
 let GUESTS = [];

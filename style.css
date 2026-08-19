@@ -432,12 +432,16 @@ textarea.input { resize: vertical; min-height: 70px; }
 
 /* Tablero: 4 columnas con scroll horizontal en pantallas chicas */
 .board {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(240px, 1fr));
+  display: flex;
   gap: 14px;
-  align-items: start;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
 }
 .column {
+  flex: 0 0 250px;
+  scroll-snap-align: start;
   background: var(--bg-deep);
   border: 1px solid var(--border);
   min-height: 120px;
@@ -464,12 +468,12 @@ textarea.input { resize: vertical; min-height: 70px; }
 }
 .column__title .dot {
   display: inline-block; width: 7px; height: 7px; margin-right: 8px;
-  background: var(--text-faint); vertical-align: middle;
+  background: var(--amber-a50); vertical-align: middle;
 }
-.column[data-estado="Pendiente"] .dot { background: var(--text-faint); }
-.column[data-estado="En curso"]  .dot { background: var(--amber); }
-.column[data-estado="Hecho"]     .dot { background: var(--amber-hi); }
+.column[data-estado="Agendado en calendario"] .dot { background: var(--text-faint); }
 .column[data-estado="Cancelado"] .dot { background: var(--danger); }
+.column[data-estado="Publicado"] .dot { background: var(--amber-hi); }
+.column[data-estado="Programado para publicar"] .dot { background: var(--amber-hi); }
 .column__count { font-size: 12px; color: var(--text-faint); }
 .column__body { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
 
@@ -621,15 +625,8 @@ textarea.input { resize: vertical; min-height: 70px; }
 .board-empty span { font-size: 13px; }
 
 @media (max-width: 780px) {
-  .board {
-    grid-auto-flow: column;
-    grid-auto-columns: 82%;
-    grid-template-columns: none;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 8px;
-  }
-  .column { scroll-snap-align: start; }
+  .board { scroll-snap-type: x mandatory; }
+  .column { flex-basis: 82%; }
   .column__head { top: 0; }
   .fab { display: flex; }
   .toolbar .btn--newtask { display: none; } /* en móvil usamos el FAB */
