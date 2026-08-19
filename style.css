@@ -477,15 +477,26 @@ textarea.input { resize: vertical; min-height: 70px; }
 .column[data-estado="Terminado"]    .dot { background: #6bbf6b; }
 .column[data-estado="Cancelado"]    .dot { background: var(--danger); }
 
-/* Selector de etapa exacta dentro de la tarjeta */
+/* Selector de etapa de producción dentro de la tarjeta */
+.tcard__selects { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.tcard__selects select { flex: 1 1 45%; min-width: 110px; }
 .tstage {
   font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
-  padding: 3px 6px; max-width: 100%;
+  padding: 4px 6px; max-width: 100%;
   background: var(--amber-a08); color: var(--amber-hi);
   border: 1px solid var(--amber-a50); cursor: pointer;
   appearance: none; -webkit-appearance: none;
 }
 .tstage:hover { border-color: var(--amber); }
+.tstatus {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 4px 6px; max-width: 100%;
+  background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-strong); cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+}
+.tstatus:hover { border-color: var(--text-faint); }
+.tcard__reels { color: var(--amber-hi); }
 .column__count { font-size: 12px; color: var(--text-faint); }
 .column__body { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
 

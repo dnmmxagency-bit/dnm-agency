@@ -391,11 +391,15 @@ function taskCardEl(t) {
 
   card.innerHTML = `
     <div class="tcard__title">${escapeHtml(t.title)}</div>
-    <div class="tcard__row">
+    <div class="tcard__selects">
+      <select class="tstatus" data-status-select title="Estatus de la tarea">${TASK_STATUS.map((s) => `<option ${s === taskStatus(t) ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}</select>
       <select class="tstage" data-stage-select title="Etapa de producción">${ESTADOS.map((e) => `<option ${e === taskEtapa(t) ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
+    </div>
+    <div class="tcard__row">
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
+      ${t.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(t.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
       ${(() => {
         const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null;
@@ -413,6 +417,18 @@ function taskCardEl(t) {
 
   card.addEventListener("click", () => openTaskModal(t));
   card.querySelector("[data-drive]")?.addEventListener("click", (e) => e.stopPropagation());
+  card.querySelector("[data-reels]")?.addEventListener("click", (e) => e.stopPropagation());
+
+  // Selector de estatus en la tarjeta (mueve de columna)
+  const statusSel = card.querySelector("[data-status-select]");
+  if (statusSel) {
+    statusSel.addEventListener("click", (e) => e.stopPropagation());
+    statusSel.addEventListener("mousedown", (e) => e.stopPropagation());
+    statusSel.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      await updateTaskEstado(t, statusSel.value);
+    });
+  }
 
   // Selector de etapa de producción en la tarjeta
   const stageSel = card.querySelector("[data-stage-select]");
@@ -530,6 +546,7 @@ function openTaskModal(task, prefill, context) {
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
   $("#tDrive").value     = task?.drive_url || "";
+  $("#tReels").value     = task?.reels_url || "";
 
   // Episodio / pieza ligada
   const selCo = $("#tContent");
@@ -583,6 +600,7 @@ $("#btnSaveTask").onclick = async () => {
     due_date: $("#tFecha").value || null,
     client_id: $("#tCliente").value || null,
     drive_url: normalizeUrl($("#tDrive").value),
+    reels_url: normalizeUrl($("#tReels").value),
     content_id: $("#tContent").value || null,
     assignee_ids,
     notes: taskNotes,
