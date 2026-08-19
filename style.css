@@ -471,11 +471,11 @@ textarea.input { resize: vertical; min-height: 70px; }
   display: inline-block; width: 7px; height: 7px; margin-right: 8px;
   background: var(--amber-a50); vertical-align: middle;
 }
-.column[data-phase="pendiente"]   .dot { background: var(--text-faint); }
-.column[data-phase="produccion"]  .dot { background: var(--amber); }
-.column[data-phase="revision"]    .dot { background: var(--amber-hi); }
-.column[data-phase="publicacion"] .dot { background: #6bbf6b; }
-.column[data-phase="cancelado"]   .dot { background: var(--danger); }
+.column[data-estado="Por hacer"]    .dot { background: var(--text-faint); }
+.column[data-estado="En curso"]     .dot { background: var(--amber); }
+.column[data-estado="En revisión"]  .dot { background: var(--amber-hi); }
+.column[data-estado="Terminado"]    .dot { background: #6bbf6b; }
+.column[data-estado="Cancelado"]    .dot { background: var(--danger); }
 
 /* Selector de etapa exacta dentro de la tarjeta */
 .tstage {

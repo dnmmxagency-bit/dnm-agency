@@ -153,7 +153,7 @@
           <div class="page-head">
             <div class="eyebrow">Tareas</div>
             <h2 class="page-title">Tablero de producción</h2>
-            <p class="page-desc">Todas las tareas del equipo, organizadas por fase. Arrastra una tarjeta entre columnas (en computadora) o tócala para editarla y cambiar su estado.</p>
+            <p class="page-desc">Todas las tareas del equipo, organizadas por estatus. Arrastra una tarjeta entre columnas (en computadora) o tócala para editarla y cambiar su estado.</p>
           </div>
 
           <div class="toolbar">
@@ -313,7 +313,7 @@
 
         <div class="grid-2" id="rowEstadoPrio">
           <div class="field">
-            <label for="tEstado">Etapa (columna del tablero)</label>
+            <label for="tEstado">Estatus</label>
             <select class="input" id="tEstado"></select>
           </div>
           <div class="field">
@@ -324,6 +324,11 @@
               <option>Baja</option>
             </select>
           </div>
+        </div>
+
+        <div class="field" id="fieldEtapa">
+          <label for="tProceso">Etapa de producción</label>
+          <select class="input" id="tProceso"></select>
         </div>
 
         <div class="grid-2">

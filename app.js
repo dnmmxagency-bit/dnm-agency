@@ -265,23 +265,23 @@ if ("serviceWorker" in navigator) {
    FASE 2 — Tareas y tablero
    ============================================================ */
 
+// Etapas de producción (etiqueta en la tarjeta y estado en Contenido)
 const ESTADOS = [
   "Agendado en calendario", "Grabación", "Edición", "Cortes", "Portada",
   "Revisión", "Correcciones", "Por programar", "Programado para publicar",
   "Publicado", "Cancelado",
 ];
-const DONE_ESTADOS = ["Publicado", "Cancelado"];
+const CONTENT_DONE_STAGES = ["Programado para publicar", "Publicado"];
 
-// Agrupación del tablero en fases (columnas) — cada tarjeta guarda su etapa exacta
-const PHASES = [
-  { key: "pendiente",   label: "Pendiente",   stages: ["Agendado en calendario"] },
-  { key: "produccion",  label: "Producción",  stages: ["Grabación", "Edición", "Cortes", "Portada"] },
-  { key: "revision",    label: "Revisión",    stages: ["Revisión", "Correcciones"] },
-  { key: "publicacion", label: "Publicación", stages: ["Por programar", "Programado para publicar", "Publicado"] },
-  { key: "cancelado",   label: "Cancelado",   stages: ["Cancelado"] },
-];
-function phaseOfStage(stage) {
-  return PHASES.find((p) => p.stages.includes(stage)) || PHASES[0];
+// Estatus de avance de la tarea (columnas del Tablero)
+const TASK_STATUS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"];
+const TASK_DONE = ["Terminado", "Cancelado"];
+
+function taskStatus(t) { return TASK_STATUS.includes(t.estado) ? t.estado : "Por hacer"; }
+function taskEtapa(t) {
+  if (ESTADOS.includes(t.proceso)) return t.proceso;
+  if (ESTADOS.includes(t.estado)) return t.estado; // compatibilidad con datos previos
+  return "Agendado en calendario";
 }
 
 let MEMBERS = [];   // [{id,name,email,role}]
@@ -330,7 +330,7 @@ function fmtDate(d) {
   return dt.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 function isOverdue(d, estado) {
-  if (!d || DONE_ESTADOS.includes(estado)) return false;
+  if (!d || TASK_DONE.includes(estado)) return false;
   const today = new Date(); today.setHours(0,0,0,0);
   const [y, mo, da] = d.split("-").map(Number);
   return new Date(y, mo - 1, da) < today;
@@ -348,21 +348,21 @@ function renderBoard() {
   $("#taskCount").textContent = `${TASKS.length} ${TASKS.length === 1 ? "tarea" : "tareas"}`;
 
   const counts = {};
-  PHASES.forEach((p) => (counts[p.key] = 0));
+  TASK_STATUS.forEach((s) => (counts[s] = 0));
 
   TASKS.forEach((t) => {
-    const phase = phaseOfStage(t.estado);
-    counts[phase.key]++;
-    const body = board.querySelector(`.column__body[data-col="${phase.key}"]`);
+    const st = taskStatus(t);
+    counts[st]++;
+    const body = board.querySelector(`.column__body[data-col="${st}"]`);
     if (body) body.appendChild(taskCardEl(t));
   });
 
-  PHASES.forEach((p) => {
-    const col = board.querySelector(`.column[data-phase="${p.key}"]`);
+  TASK_STATUS.forEach((s) => {
+    const col = board.querySelector(`.column[data-estado="${s}"]`);
     if (!col) return;
-    col.querySelector(".column__count").textContent = counts[p.key];
+    col.querySelector(".column__count").textContent = counts[s];
     const body = col.querySelector(".column__body");
-    if (counts[p.key] === 0) {
+    if (counts[s] === 0) {
       const empty = document.createElement("div");
       empty.className = "col-empty";
       empty.textContent = "Sin tareas";
@@ -392,7 +392,7 @@ function taskCardEl(t) {
   card.innerHTML = `
     <div class="tcard__title">${escapeHtml(t.title)}</div>
     <div class="tcard__row">
-      <select class="tstage" data-stage-select title="Etapa">${ESTADOS.map((e) => `<option ${e === (t.estado || ESTADOS[0]) ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
+      <select class="tstage" data-stage-select title="Etapa de producción">${ESTADOS.map((e) => `<option ${e === taskEtapa(t) ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
       ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
@@ -414,14 +414,14 @@ function taskCardEl(t) {
   card.addEventListener("click", () => openTaskModal(t));
   card.querySelector("[data-drive]")?.addEventListener("click", (e) => e.stopPropagation());
 
-  // Selector de etapa exacta en la tarjeta
+  // Selector de etapa de producción en la tarjeta
   const stageSel = card.querySelector("[data-stage-select]");
   if (stageSel) {
     stageSel.addEventListener("click", (e) => e.stopPropagation());
     stageSel.addEventListener("mousedown", (e) => e.stopPropagation());
     stageSel.addEventListener("change", async (e) => {
       e.stopPropagation();
-      await updateTaskEstado(t, stageSel.value);
+      await updateTaskProceso(t, stageSel.value);
     });
   }
 
@@ -441,16 +441,16 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/* ---- Construcción dinámica de columnas del tablero (por fase) ---- */
+/* ---- Construcción dinámica de columnas del tablero (por estatus) ---- */
 function buildBoardColumns() {
   const board = $("#board");
-  board.innerHTML = PHASES.map((p) => `
-    <div class="column" data-phase="${p.key}">
-      <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(p.label)}</span><span class="column__count">0</span></div>
-      <div class="column__body" data-col="${p.key}"></div>
+  board.innerHTML = TASK_STATUS.map((s) => `
+    <div class="column" data-estado="${escapeHtml(s)}">
+      <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(s)}</span><span class="column__count">0</span></div>
+      <div class="column__body" data-col="${escapeHtml(s)}"></div>
     </div>`).join("");
   board.querySelectorAll(".column").forEach((col) => {
-    const phase = PHASES.find((p) => p.key === col.dataset.phase);
+    const estado = col.dataset.estado;
     col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("dragover"); });
     col.addEventListener("dragleave", () => col.classList.remove("dragover"));
     col.addEventListener("drop", async (e) => {
@@ -458,10 +458,8 @@ function buildBoardColumns() {
       col.classList.remove("dragover");
       const id = e.dataTransfer.getData("text/plain");
       const task = TASKS.find((t) => t.id === id);
-      if (!task) return;
-      // si ya está en esa fase, no cambiar la etapa fina; si no, entra a la primera etapa de la fase
-      if (phase.stages.includes(task.estado)) return;
-      await updateTaskEstado(task, phase.stages[0]);
+      if (!task || taskStatus(task) === estado) return;
+      await updateTaskEstado(task, estado);
     });
   });
 }
@@ -474,6 +472,16 @@ async function updateTaskEstado(task, estado) {
     .update({ estado, updated_at: new Date().toISOString() })
     .eq("id", task.id);
   if (error) { task.estado = prev; renderBoard(); toast("No se pudo mover la tarea"); }
+}
+
+async function updateTaskProceso(task, proceso) {
+  const prev = task.proceso;
+  task.proceso = proceso;             // optimista
+  renderBoard();
+  const { error } = await sb.from("tasks")
+    .update({ proceso, updated_at: new Date().toISOString() })
+    .eq("id", task.id);
+  if (error) { task.proceso = prev; renderBoard(); toast("No se pudo cambiar la etapa"); }
 }
 
 /* ============================================================
@@ -493,6 +501,7 @@ function openTaskModal(task, prefill, context) {
   // sin proceso, estado ni prioridad.
   const grabacion = context === "grabacion";
   $("#rowEstadoPrio").classList.toggle("hidden", grabacion);
+  $("#fieldEtapa").classList.toggle("hidden", grabacion);
 
   // Poblar clientes
   const selC = $("#tCliente");
@@ -509,12 +518,14 @@ function openTaskModal(task, prefill, context) {
 
   // Valores
   $("#tTitle").value     = task?.title || "";
-  // Etapa (columna del tablero) = mismas etapas que Contenido
+  // Estatus (columna del Tablero)
   const selEstado = $("#tEstado");
-  selEstado.innerHTML = ESTADOS.map((e) => `<option>${e}</option>`).join("");
-  const curE = task?.estado;
-  if (curE && !ESTADOS.includes(curE)) selEstado.insertAdjacentHTML("afterbegin", `<option>${escapeHtml(curE)}</option>`);
-  selEstado.value = curE || "Agendado en calendario";
+  selEstado.innerHTML = TASK_STATUS.map((s) => `<option>${s}</option>`).join("");
+  selEstado.value = taskStatus(task || {});
+  // Etapa de producción (etiqueta)
+  const selProc = $("#tProceso");
+  selProc.innerHTML = ESTADOS.map((e) => `<option>${e}</option>`).join("");
+  selProc.value = task ? taskEtapa(task) : "Agendado en calendario";
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
@@ -535,6 +546,7 @@ function openTaskModal(task, prefill, context) {
   if (!task && prefill) {
     if (prefill.due_date) $("#tFecha").value = prefill.due_date;
     if (prefill.estado)   $("#tEstado").value = prefill.estado;
+    if (prefill.proceso)  $("#tProceso").value = prefill.proceso;
   }
 
   // Botón eliminar solo si puede
@@ -565,7 +577,7 @@ $("#btnSaveTask").onclick = async () => {
   const assignee_ids = taskAssignees.slice();
   const payload = {
     title,
-    proceso: $("#tEstado").value,
+    proceso: $("#tProceso").value,
     estado: $("#tEstado").value,
     prioridad: $("#tPrioridad").value,
     due_date: $("#tFecha").value || null,
@@ -709,7 +721,7 @@ function createCalendar(mountId, opts) {
       const list = (byDay[key] || []);
 
       let pills = list.slice(0, maxPills).map((t) => {
-        const done = DONE_ESTADOS.includes(t.estado);
+        const done = TASK_DONE.includes(t.estado);
         return `<div class="cal__pill ${done ? "done" : ""}" data-prioridad="${escapeHtml(t.prioridad || "Media")}" data-id="${t.id}" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>`;
       }).join("");
       if (list.length > maxPills) pills += `<div class="cal__more">+${list.length - maxPills} más</div>`;
@@ -755,7 +767,7 @@ function createCalendar(mountId, opts) {
       };
     });
     mount.querySelectorAll(".cal__cell").forEach((c) => {
-      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, estado: opts.newEstado }, opts.context);
+      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso }, opts.context);
     });
   }
 
@@ -780,8 +792,8 @@ function initCalendars() {
   }
   if (!calGrab) {
     calGrab = createCalendar("cal-grabacion", {
-      filter: (t) => t.estado === "Grabación",
-      newEstado: "Grabación",
+      filter: (t) => taskEtapa(t) === "Grabación",
+      newProceso: "Grabación",
       context: "grabacion",
     });
   }
