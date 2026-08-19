@@ -1115,3 +1115,25 @@ textarea.input { resize: vertical; min-height: 70px; }
 .brief-row { display: grid; gap: 6px; align-items: center; }
 .brief-row .rowlabel { font-size: 12px; color: var(--text-muted); }
 .brief-row .input { padding: 7px 9px; font-size: 13px; }
+
+/* ============================================================
+   FASE 12 — Multi-selector desplegable con chips (avatares)
+   ============================================================ */
+.ms-wrap { display: block; }
+.ms-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ms-chips:empty { display: none; }
+.ms-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  padding: 4px 6px 4px 8px; font-size: 12px; color: var(--text);
+}
+.ms-chip.has-ava { padding-left: 4px; }
+.ms-ava {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; flex-shrink: 0;
+  background: var(--amber-a15); color: var(--amber-hi); border: 1px solid var(--amber-a50);
+  font-size: 9px; font-weight: 700;
+}
+.ms-x { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.ms-x:hover { color: #e5b6ac; }
+.ms-empty { font-size: 12px; color: var(--text-faint); padding: 2px 0 8px; }

@@ -272,6 +272,7 @@ let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
 let editingTask = null; // null = creando; objeto = editando
 let taskNotes = [];     // notas/correcciones en edición dentro del modal
+let taskAssignees = []; // responsables seleccionados (chips)
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
@@ -460,19 +461,10 @@ function openTaskModal(task, prefill, context) {
       return `<option value="${c.id}">${escapeHtml(c.name)}${st !== "Activo" ? ` (${st.toLowerCase()})` : ""}</option>`;
     }).join("");
 
-  // Poblar responsables (checkboxes)
-  const people = $("#tPeople");
-  if (MEMBERS.length === 0) {
-    people.innerHTML = '<div class="people__empty">Aún no hay más personas registradas.</div>';
-  } else {
-    const selected = new Set(task && Array.isArray(task.assignee_ids) ? task.assignee_ids : []);
-    people.innerHTML = MEMBERS.map((m) => `
-      <label class="person">
-        <input type="checkbox" value="${m.id}" ${selected.has(m.id) ? "checked" : ""}/>
-        <span class="person__name">${escapeHtml(m.name || m.email)}</span>
-        ${m.id === currentProfile?.id ? '<span class="person__you">Tú</span>' : ""}
-      </label>`).join("");
-  }
+  // Responsables (desplegable con avatares)
+  taskAssignees = (task && Array.isArray(task.assignee_ids)) ? task.assignee_ids.slice() : [];
+  makeMultiSelect($("#tPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), taskAssignees,
+    { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
 
   // Valores
   $("#tTitle").value     = task?.title || "";
@@ -525,7 +517,7 @@ $("#btnSaveTask").onclick = async () => {
   const title = $("#tTitle").value.trim();
   if (!title) { showTaskMsg("Escribe un título para la tarea."); return; }
 
-  const assignee_ids = Array.from($("#tPeople").querySelectorAll("input:checked")).map((i) => i.value);
+  const assignee_ids = taskAssignees.slice();
   const payload = {
     title,
     proceso: $("#tProceso").value,
@@ -1265,32 +1257,15 @@ function openContentModal(item) {
     CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   selC.value = item?.client_id || "";
 
-  // invitados (checkboxes)
-  const gbox = $("#coGuests");
-  if (!GUESTS.length) {
-    gbox.innerHTML = '<div class="people__empty">Aún no hay invitados. Créalos en la pestaña Invitados.</div>';
-  } else {
-    const sel = new Set(item && Array.isArray(item.guest_ids) ? item.guest_ids : []);
-    gbox.innerHTML = GUESTS.map((g) => `
-      <label class="person">
-        <input type="checkbox" value="${g.id}" ${sel.has(g.id) ? "checked" : ""}/>
-        <span class="person__name">${escapeHtml(g.name)}</span>
-      </label>`).join("");
-  }
+  // invitados (desplegable)
+  coGuestsSel = (item && Array.isArray(item.guest_ids)) ? item.guest_ids.slice() : [];
+  makeMultiSelect($("#coGuests"), GUESTS.map((g) => ({ id: g.id, name: g.name })), coGuestsSel,
+    { avatar: false, placeholder: "Agregar invitado…", emptyMsg: "Aún no hay invitados. Créalos en la pestaña Invitados." });
 
-  // editores (responsables)
-  const ebox = $("#coEditors");
-  if (!MEMBERS.length) {
-    ebox.innerHTML = '<div class="people__empty">Aún no hay personas registradas.</div>';
-  } else {
-    const es = new Set(item && Array.isArray(item.assignee_ids) ? item.assignee_ids : []);
-    ebox.innerHTML = MEMBERS.map((m) => `
-      <label class="person">
-        <input type="checkbox" value="${m.id}" ${es.has(m.id) ? "checked" : ""}/>
-        <span class="person__name">${escapeHtml(m.name || m.email)}</span>
-        ${m.id === currentProfile?.id ? '<span class="person__you">Tú</span>' : ""}
-      </label>`).join("");
-  }
+  // editores (desplegable con avatares)
+  coEditorsSel = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
+  makeMultiSelect($("#coEditors"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), coEditorsSel,
+    { avatar: true, placeholder: "Agregar editor…", emptyMsg: "Aún no hay personas registradas." });
 
   $("#coTitle").value = item?.title || "";
   $("#coChapter").value = item?.chapter ?? "";
@@ -1322,8 +1297,8 @@ $("#btnSaveContent").onclick = async () => {
   const title = $("#coTitle").value.trim();
   if (!title) { showMsg("#contentMsg", "Escribe un título."); return; }
   const chapterRaw = $("#coChapter").value.trim();
-  const guest_ids = Array.from($("#coGuests").querySelectorAll("input:checked")).map((i) => i.value);
-  const assignee_ids = Array.from($("#coEditors").querySelectorAll("input:checked")).map((i) => i.value);
+  const guest_ids = coGuestsSel.slice();
+  const assignee_ids = coEditorsSel.slice();
   const payload = {
     title,
     chapter: chapterRaw === "" ? null : Number(chapterRaw),
@@ -1583,3 +1558,41 @@ $("#btnSaveBrief").onclick = async () => {
   toast("Brief guardado");
   closeBrief();
 };
+
+/* ============================================================
+   FASE 12 — Multi-selector desplegable con chips
+   makeMultiSelect(container, options[{id,name}], selectedIds[], opts)
+   - muta selectedIds en su lugar; con avatar:true muestra el ícono.
+   ============================================================ */
+let coGuestsSel = [];
+let coEditorsSel = [];
+
+function makeMultiSelect(container, options, selectedIds, opts) {
+  opts = opts || {};
+  const avatar = !!opts.avatar;
+  const placeholder = opts.placeholder || "Agregar…";
+  const emptyMsg = opts.emptyMsg || null;
+
+  container.className = "ms-wrap";
+
+  function render() {
+    if (!options.length && emptyMsg) { container.innerHTML = `<div class="ms-empty">${escapeHtml(emptyMsg)}</div>`; return; }
+    const chips = selectedIds.map((id) => {
+      const o = options.find((x) => x.id === id);
+      const name = o ? o.name : "—";
+      return `<span class="ms-chip ${avatar ? "has-ava" : ""}">${avatar ? `<span class="ms-ava">${escapeHtml(initials(name))}</span>` : ""}${escapeHtml(name)}<button type="button" class="ms-x" data-id="${id}" aria-label="Quitar">&times;</button></span>`;
+    }).join("");
+    const remaining = options.filter((o) => !selectedIds.includes(o.id));
+    const optsHtml = `<option value="">${escapeHtml(placeholder)}</option>` +
+      remaining.map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+    container.innerHTML = `<div class="ms-chips">${chips}</div><select class="input ms-select">${optsHtml}</select>`;
+
+    const sel = container.querySelector(".ms-select");
+    if (!remaining.length) { sel.disabled = true; }
+    sel.onchange = () => { if (sel.value) { selectedIds.push(sel.value); render(); } };
+    container.querySelectorAll(".ms-x").forEach((b) => {
+      b.onclick = () => { const i = selectedIds.indexOf(b.dataset.id); if (i >= 0) selectedIds.splice(i, 1); render(); };
+    });
+  }
+  render();
+}
