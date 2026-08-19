@@ -1177,3 +1177,6 @@ textarea.input { resize: vertical; min-height: 70px; }
 
 /* Fase 14 — chip de fecha de entrega en tarjetas de tarea */
 .chip.chip--due { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); }
+
+/* Fase 17 — links en la lista de contenido */
+.litem__links { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }

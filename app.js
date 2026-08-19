@@ -287,6 +287,7 @@ function taskEtapa(t) {
 let MEMBERS = [];   // [{id,name,email,role}]
 let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
+let boardClientFilter = ""; // filtro por cliente en el Tablero
 let editingTask = null; // null = creando; objeto = editando
 let taskNotes = [];     // notas/correcciones en edición dentro del modal
 let taskAssignees = []; // responsables seleccionados (chips)
@@ -339,18 +340,33 @@ function canDelete(task) {
   return task.owner_id === currentProfile?.id || currentProfile?.role === "owner";
 }
 
+function fillBoardClientFilter() {
+  const sel = $("#boardClientFilter");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los clientes</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  sel.value = cur;
+  if (!sel.dataset.wired) {
+    sel.dataset.wired = "1";
+    sel.onchange = () => { boardClientFilter = sel.value; renderBoard(); };
+  }
+}
+
 /* ---- Render del tablero ---- */
 function renderBoard() {
   const board = $("#board");
   if (!board.querySelector(".column")) buildBoardColumns();
+  fillBoardClientFilter();
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
-  $("#taskCount").textContent = `${TASKS.length} ${TASKS.length === 1 ? "tarea" : "tareas"}`;
+  const source = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
+  $("#taskCount").textContent = `${source.length} ${source.length === 1 ? "tarea" : "tareas"}`;
 
   const counts = {};
   TASK_STATUS.forEach((s) => (counts[s] = 0));
 
-  TASKS.forEach((t) => {
+  source.forEach((t) => {
     const st = taskStatus(t);
     counts[st]++;
     const body = board.querySelector(`.column__body[data-col="${st}"]`);
@@ -1221,6 +1237,7 @@ let CONTENT = [];
 let editingContent = null;
 let editingGuest = null;
 let contentFilterEstado = "";
+let contentClientFilter = "";
 let contentMine = false;
 
 async function loadGuests() {
@@ -1251,11 +1268,23 @@ $("#contentTabs").querySelectorAll("button").forEach((b) => {
 /* ---- Filtro por estado ---- */
 function fillContentFilter() {
   const sel = $("#contentFilter");
-  if (sel.options.length > 1) return; // ya está lleno
-  CONTENT_ESTADOS.forEach((e) => {
-    const o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o);
-  });
-  sel.onchange = () => { contentFilterEstado = sel.value; renderContent(); };
+  if (sel.options.length <= 1) {
+    CONTENT_ESTADOS.forEach((e) => {
+      const o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o);
+    });
+    sel.onchange = () => { contentFilterEstado = sel.value; renderContent(); };
+  }
+  const selC = $("#contentClientFilter");
+  if (selC) {
+    const cur = selC.value;
+    selC.innerHTML = '<option value="">Todos los clientes</option>' +
+      CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+    selC.value = cur;
+    if (!selC.dataset.wired) {
+      selC.dataset.wired = "1";
+      selC.onchange = () => { contentClientFilter = selC.value; renderContent(); };
+    }
+  }
 }
 
 /* ---- Render de piezas ---- */
@@ -1264,6 +1293,7 @@ function renderContent() {
   const box = $("#contentList");
   let list = CONTENT;
   if (contentFilterEstado) list = list.filter((c) => c.estado === contentFilterEstado);
+  if (contentClientFilter) list = list.filter((c) => c.client_id === contentClientFilter);
   if (contentMine) list = list.filter((c) => (Array.isArray(c.assignee_ids) ? c.assignee_ids : []).includes(currentProfile?.id));
 
   $("#contentCount").textContent = `${list.length} ${list.length === 1 ? "pieza" : "piezas"}`;
@@ -1294,6 +1324,10 @@ function renderContent() {
       <div class="litem__main">
         <div class="litem__title">${c.chapter != null && c.cover_url ? `<span style="color:var(--text-faint)">#${c.chapter} · </span>` : ""}${escapeHtml(c.title)}</div>
         <div class="litem__meta">${metaParts.length ? escapeHtml(metaParts.join(" · ")) : "Sin cliente"}</div>
+        ${(c.drive_url || c.reels_url) ? `<div class="litem__links">
+          ${c.drive_url ? `<a class="tcard__drive" data-lnk href="${escapeHtml(normalizeUrl(c.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
+          ${c.reels_url ? `<a class="tcard__drive tcard__reels" data-lnk href="${escapeHtml(normalizeUrl(c.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
+        </div>` : ""}
         ${avatars ? `<div class="assignees" style="margin-top:6px">${avatars}</div>` : ""}
       </div>
       <div class="litem__right">
@@ -1305,6 +1339,7 @@ function renderContent() {
         </div>
       </div>`;
     row.onclick = () => openContentModal(c);
+    row.querySelectorAll("[data-lnk]").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
     box.appendChild(row);
   });
 }
@@ -1346,6 +1381,7 @@ function openContentModal(item) {
   $("#coDelivery").value = item?.delivery_date || "";
   $("#coCover").value = item?.cover_url || "";
   $("#coDrive").value = item?.drive_url || "";
+  $("#coReels").value = item?.reels_url || "";
   $("#coNotes").value = item?.notes || "";
 
   $("#btnDeleteContent").classList.toggle("hidden", !(item && (item.owner_id === currentProfile?.id || currentProfile?.role === "owner")));
@@ -1384,6 +1420,7 @@ $("#btnSaveContent").onclick = async () => {
     assignee_ids,
     cover_url: normalizeUrl($("#coCover").value),
     drive_url: normalizeUrl($("#coDrive").value),
+    reels_url: normalizeUrl($("#coReels").value),
     notes: $("#coNotes").value.trim() || null,
     updated_at: new Date().toISOString(),
   };

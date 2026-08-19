@@ -162,6 +162,9 @@
               Nueva tarea
             </button>
             <button class="btn btn--ghost btn--sm" id="btnRefresh" type="button">Refrescar</button>
+            <select class="input" id="boardClientFilter" style="width:auto">
+              <option value="">Todos los clientes</option>
+            </select>
             <div class="toolbar__spacer"></div>
             <span class="count-pill" id="taskCount">0 tareas</span>
           </div>
@@ -201,6 +204,9 @@
               </button>
               <select class="input" id="contentFilter" style="width:auto">
                 <option value="">Todos los estados</option>
+              </select>
+              <select class="input" id="contentClientFilter" style="width:auto">
+                <option value="">Todos los clientes</option>
               </select>
               <button class="btn btn--ghost btn--sm" id="btnMyContent" type="button">Mis piezas</button>
               <div class="toolbar__spacer"></div>
@@ -597,6 +603,10 @@
             <label for="coDrive">Enlace de Drive</label>
             <input class="input" type="url" id="coDrive" placeholder="https://drive.google.com/…" />
           </div>
+        </div>
+        <div class="field">
+          <label for="coReels">Link de reels</label>
+          <input class="input" type="url" id="coReels" placeholder="https://… (reels / cortes)" />
         </div>
         <div class="field">
           <label for="coNotes">Notas</label>
