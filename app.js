@@ -11,7 +11,7 @@
   if (seen) splash.classList.add("instant");
 
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const hold = seen ? 500 : (reduce ? 800 : 2300);
+  const hold = seen ? 500 : (reduce ? 800 : 5300);
 
   let closed = false;
   const finish = () => {
