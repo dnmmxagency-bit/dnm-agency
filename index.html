@@ -219,6 +219,7 @@
               <select class="input" id="contentFilter" style="width:auto">
                 <option value="">Todos los estados</option>
               </select>
+              <button class="btn btn--ghost btn--sm" id="btnMyContent" type="button">Mis piezas</button>
               <div class="toolbar__spacer"></div>
               <span class="count-pill" id="contentCount">0 piezas</span>
             </div>
@@ -377,6 +378,11 @@
         <div class="field">
           <label for="tDrive">Enlace de Drive del contenido</label>
           <input class="input" type="url" id="tDrive" placeholder="https://drive.google.com/…" />
+        </div>
+
+        <div class="field">
+          <label for="tContent">Episodio / pieza ligada</label>
+          <select class="input" id="tContent"><option value="">— Ninguna —</option></select>
         </div>
 
         <div class="field">
@@ -599,6 +605,10 @@
         <div class="field">
           <label>Invitados</label>
           <div class="people" id="coGuests"></div>
+        </div>
+        <div class="field">
+          <label>Editores (responsables)</label>
+          <div class="people" id="coEditors"></div>
         </div>
         <div class="grid-2">
           <div class="field">

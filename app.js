@@ -381,6 +381,7 @@ function taskCardEl(t) {
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
+      ${(() => { const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null; return pz ? `<span class="chip" title="${escapeHtml(pz.title)}">🎬 ${pz.chapter != null ? "#" + pz.chapter : "Ep"}</span>` : ""; })()}
     </div>
     <div class="tcard__foot">
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
@@ -482,6 +483,12 @@ function openTaskModal(task, prefill, context) {
   $("#tCliente").value   = task?.client_id || "";
   $("#tDrive").value     = task?.drive_url || "";
 
+  // Episodio / pieza ligada
+  const selCo = $("#tContent");
+  selCo.innerHTML = '<option value="">— Ninguna —</option>' +
+    CONTENT.map((c) => `<option value="${c.id}">${c.chapter != null ? "#" + c.chapter + " · " : ""}${escapeHtml(c.title)}</option>`).join("");
+  selCo.value = task?.content_id || (prefill && prefill.content_id) || "";
+
   // Notas / correcciones (copia de trabajo)
   taskNotes = Array.isArray(task?.notes) ? JSON.parse(JSON.stringify(task.notes)) : [];
   $("#tNoteInput").value = "";
@@ -527,6 +534,7 @@ $("#btnSaveTask").onclick = async () => {
     due_date: $("#tFecha").value || null,
     client_id: $("#tCliente").value || null,
     drive_url: normalizeUrl($("#tDrive").value),
+    content_id: $("#tContent").value || null,
     assignee_ids,
     notes: taskNotes,
     updated_at: new Date().toISOString(),
@@ -1150,6 +1158,7 @@ let CONTENT = [];
 let editingContent = null;
 let editingGuest = null;
 let contentFilterEstado = "";
+let contentMine = false;
 
 async function loadGuests() {
   const { data, error } = await sb.from("guests").select("*").order("name");
@@ -1191,7 +1200,8 @@ function renderContent() {
   fillContentFilter();
   const box = $("#contentList");
   let list = CONTENT;
-  if (contentFilterEstado) list = CONTENT.filter((c) => c.estado === contentFilterEstado);
+  if (contentFilterEstado) list = list.filter((c) => c.estado === contentFilterEstado);
+  if (contentMine) list = list.filter((c) => (Array.isArray(c.assignee_ids) ? c.assignee_ids : []).includes(currentProfile?.id));
 
   $("#contentCount").textContent = `${list.length} ${list.length === 1 ? "pieza" : "piezas"}`;
 
@@ -1204,10 +1214,15 @@ function renderContent() {
   list.forEach((c) => {
     const cliente = CLIENTS.find((x) => x.id === c.client_id);
     const guests = (Array.isArray(c.guest_ids) ? c.guest_ids : []).map(guestName).filter((n) => n !== "—");
+    const taskN = TASKS.filter((t) => t.content_id === c.id).length;
+    const editors = (Array.isArray(c.assignee_ids) ? c.assignee_ids : []);
     const metaParts = [];
     if (cliente) metaParts.push(cliente.name);
     if (guests.length) metaParts.push("con " + guests.join(", "));
+    if (taskN) metaParts.push(`${taskN} tarea${taskN === 1 ? "" : "s"}`);
     const estadoCls = CONTENT_DONE.includes(c.estado) ? "done" : (c.estado === "Cancelado" ? "muted" : "");
+    let avatars = "";
+    editors.slice(0, 3).forEach((id) => { avatars += `<span class="mini" title="${escapeHtml(memberName(id))}">${escapeHtml(initials(memberName(id)))}</span>`; });
 
     const row = document.createElement("div");
     row.className = "litem" + (c.estado === "Cancelado" ? " cancel" : "");
@@ -1216,6 +1231,7 @@ function renderContent() {
       <div class="litem__main">
         <div class="litem__title">${c.chapter != null && c.cover_url ? `<span style="color:var(--text-faint)">#${c.chapter} · </span>` : ""}${escapeHtml(c.title)}</div>
         <div class="litem__meta">${metaParts.length ? escapeHtml(metaParts.join(" · ")) : "Sin cliente"}</div>
+        ${avatars ? `<div class="assignees" style="margin-top:6px">${avatars}</div>` : ""}
       </div>
       <div class="litem__right">
         <span class="estado-chip ${estadoCls}">${escapeHtml(c.estado)}</span>
@@ -1262,6 +1278,20 @@ function openContentModal(item) {
       </label>`).join("");
   }
 
+  // editores (responsables)
+  const ebox = $("#coEditors");
+  if (!MEMBERS.length) {
+    ebox.innerHTML = '<div class="people__empty">Aún no hay personas registradas.</div>';
+  } else {
+    const es = new Set(item && Array.isArray(item.assignee_ids) ? item.assignee_ids : []);
+    ebox.innerHTML = MEMBERS.map((m) => `
+      <label class="person">
+        <input type="checkbox" value="${m.id}" ${es.has(m.id) ? "checked" : ""}/>
+        <span class="person__name">${escapeHtml(m.name || m.email)}</span>
+        ${m.id === currentProfile?.id ? '<span class="person__you">Tú</span>' : ""}
+      </label>`).join("");
+  }
+
   $("#coTitle").value = item?.title || "";
   $("#coChapter").value = item?.chapter ?? "";
   $("#coRecord").value = item?.record_date || "";
@@ -1278,6 +1308,12 @@ function openContentModal(item) {
 function closeContentModal() { contentOverlay.classList.remove("open"); editingContent = null; }
 
 $("#btnNewContent").onclick = () => openContentModal(null);
+$("#btnMyContent").onclick = () => {
+  contentMine = !contentMine;
+  $("#btnMyContent").classList.toggle("btn--primary", contentMine);
+  $("#btnMyContent").classList.toggle("btn--ghost", !contentMine);
+  renderContent();
+};
 $("#contentModalClose").onclick = closeContentModal;
 $("#btnCancelContent").onclick = closeContentModal;
 contentOverlay.addEventListener("click", (e) => { if (e.target === contentOverlay) closeContentModal(); });
@@ -1287,6 +1323,7 @@ $("#btnSaveContent").onclick = async () => {
   if (!title) { showMsg("#contentMsg", "Escribe un título."); return; }
   const chapterRaw = $("#coChapter").value.trim();
   const guest_ids = Array.from($("#coGuests").querySelectorAll("input:checked")).map((i) => i.value);
+  const assignee_ids = Array.from($("#coEditors").querySelectorAll("input:checked")).map((i) => i.value);
   const payload = {
     title,
     chapter: chapterRaw === "" ? null : Number(chapterRaw),
@@ -1295,6 +1332,7 @@ $("#btnSaveContent").onclick = async () => {
     release_date: $("#coRelease").value || null,
     client_id: $("#coClient").value || null,
     guest_ids,
+    assignee_ids,
     cover_url: normalizeUrl($("#coCover").value),
     drive_url: normalizeUrl($("#coDrive").value),
     notes: $("#coNotes").value.trim() || null,
