@@ -1231,7 +1231,14 @@ textarea.input { resize: vertical; min-height: 70px; }
 .urow__name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .urow__you { font-size: 10px; color: var(--amber-hi); border: 1px solid var(--amber-a50); padding: 1px 5px; margin-left: 4px; }
 .urow__mail { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.urow__role { width: auto; flex-shrink: 0; min-width: 150px; }
-.urow__owner { font-size: 12px; font-weight: 700; color: var(--amber-hi); letter-spacing: 0.04em; }
+.urow select.urow__role { width: 160px; flex: 0 0 160px; min-width: 0; }
+.urow__owner { font-size: 12px; font-weight: 700; color: var(--amber-hi); letter-spacing: 0.04em; flex-shrink: 0; }
+
+@media (max-width: 560px) {
+  .urow { flex-direction: column; align-items: stretch; gap: 10px; }
+  .urow__id { width: 100%; }
+  .urow select.urow__role { width: 100%; flex: 1 1 auto; }
+  .urow__owner { align-self: flex-start; }
+}
 
 @media (prefers-reduced-motion: reduce) { .app.active .main { animation: none; } }
