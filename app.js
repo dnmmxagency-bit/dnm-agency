@@ -189,8 +189,20 @@ async function loadProfile(user) {
 
 function paintUser(p) {
   $("#userName").textContent = p.name || p.email || "Usuario";
-  $("#userRole").textContent = p.role || "member";
+  $("#userRole").textContent = isAdmin() ? "Administrador" : "Miembro";
   $("#userAvatar").textContent = initials(p.name || p.email);
+  applyRoleGating();
+}
+
+function isAdmin() {
+  return !!currentProfile && (currentProfile.role === "admin" || currentProfile.role === "owner");
+}
+
+function applyRoleGating() {
+  const admin = isAdmin();
+  document.querySelectorAll("[data-admin-only]").forEach((el) => { el.style.display = admin ? "" : "none"; });
+  const nb = document.getElementById("btnNewClient");
+  if (nb) nb.style.display = admin ? "" : "none";
 }
 
 function enterApp() {
@@ -219,6 +231,10 @@ function switchView(view) {
   }
   if (view === "clientes") renderClients();
   if (view === "contenido") { renderContent(); renderGuests(); }
+  if (view === "usuarios") {
+    if (!isAdmin()) { switchView("tablero"); return; }
+    renderUsuarios();
+  }
   // El botón flotante (+) solo tiene sentido en el tablero de tareas
   const fab = $("#fabNewTask");
   if (fab) fab.style.display = view === "tablero" ? "" : "none";
@@ -1041,9 +1057,10 @@ function openClientModal(client) {
   $("#btnDeleteClient").classList.toggle("hidden", !(client && canDeleteClient(client)));
 
   refreshClientFilesPanel();
+  applyClientModalRole();
 
   clientOverlay.classList.add("open");
-  setTimeout(() => $("#cName").focus(), 50);
+  if (isAdmin()) setTimeout(() => $("#cName").focus(), 50);
 }
 
 function closeClientModal() {
@@ -1854,4 +1871,65 @@ function makeMultiSelect(container, options, selectedIds, opts) {
     sel.onchange = () => { if (sel.value) add(sel.value); };
   }
   render();
+}
+
+/* ============================================================
+   FASE 19 — Usuarios y roles (solo administradores)
+   ============================================================ */
+function renderUsuarios() {
+  const box = document.getElementById("usersList");
+  if (!box) return;
+  box.innerHTML = "";
+  MEMBERS.forEach((m) => {
+    const isMe = m.id === currentProfile?.id;
+    const isOwner = m.role === "owner";
+    const roleVal = (m.role === "admin" || m.role === "owner") ? "admin" : "member";
+    const el = document.createElement("div");
+    el.className = "urow";
+    el.innerHTML = `
+      <div class="urow__id">
+        <span class="mini">${escapeHtml(initials(m.name || m.email))}</span>
+        <div>
+          <div class="urow__name">${escapeHtml(m.name || m.email)}${isMe ? ' <span class="urow__you">Tú</span>' : ""}</div>
+          <div class="urow__mail">${escapeHtml(m.email || "")}</div>
+        </div>
+      </div>
+      ${isOwner
+        ? `<span class="urow__owner">Dueño</span>`
+        : `<select class="input urow__role" data-id="${m.id}">
+             <option value="admin"  ${roleVal === "admin" ? "selected" : ""}>Administrador</option>
+             <option value="member" ${roleVal === "member" ? "selected" : ""}>Miembro</option>
+           </select>`}`;
+    box.appendChild(el);
+  });
+  box.querySelectorAll(".urow__role").forEach((sel) => {
+    sel.onchange = async () => {
+      sel.disabled = true;
+      const id = sel.dataset.id;
+      const { error } = await sb.from("profiles").update({ role: sel.value }).eq("id", id);
+      sel.disabled = false;
+      if (error) { toast("No se pudo cambiar el rol"); return; }
+      toast("Rol actualizado");
+      await loadMembers();
+      if (id === currentProfile?.id) { currentProfile.role = sel.value; paintUser(currentProfile); }
+      renderUsuarios();
+    };
+  });
+}
+
+/* Gating del modal de cliente: los miembros solo pueden ver */
+function applyClientModalRole() {
+  const admin = isAdmin();
+  const body = document.querySelector("#clientOverlay .modal__body");
+  if (body) body.querySelectorAll("input, select, textarea").forEach((el) => { el.disabled = !admin; });
+  const save = document.getElementById("btnSaveClient");
+  if (save) save.style.display = admin ? "" : "none";
+  const del = document.getElementById("btnDeleteClient");
+  if (!admin && del) del.classList.add("hidden");
+  const brief = document.getElementById("btnOpenBrief");
+  if (brief) brief.style.display = admin ? "" : "none";
+  const up = document.getElementById("cUploadBtn");
+  if (up) up.style.display = admin ? "" : "none";
+  const ro = document.getElementById("clientReadonly");
+  if (ro) ro.classList.toggle("hidden", admin);
 }

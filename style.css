@@ -910,7 +910,7 @@ textarea.input { resize: vertical; min-height: 70px; }
 #splash {
   position: fixed; inset: 0; z-index: 100;
   background: var(--bg-deep);
-  display: grid; place-items: center;
+  display: grid; align-items: center; justify-items: start;
   opacity: 1; transition: opacity 0.6s var(--ease);
 }
 #splash.done { opacity: 0; pointer-events: none; }
@@ -936,11 +936,12 @@ textarea.input { resize: vertical; min-height: 70px; }
   position: relative; z-index: 1;
   display: flex; flex-direction: row; align-items: center;
   gap: clamp(16px, 3.5vw, 34px);
-  padding: 0 20px;
+  padding-left: clamp(28px, 9vw, 150px); padding-right: 20px;
+  animation: sp-rise 0.9s var(--ease) 0.1s both;
 }
 .splash__iso {
   width: clamp(150px, 32vw, 260px); height: clamp(150px, 32vw, 260px); display: block; flex-shrink: 0;
-  opacity: 0; transform: translateX(-14px) scale(0.96);
+  opacity: 0; transform: translateX(-18px) scale(0.96);
   animation: sp-iso 1.2s var(--ease) 0.2s forwards;
 }
 .splash__div {
@@ -949,13 +950,13 @@ textarea.input { resize: vertical; min-height: 70px; }
   transform: scaleY(0); transform-origin: center;
   animation: sp-lineY 0.8s var(--ease) 0.9s forwards;
 }
-.splash__lock { display: flex; flex-direction: column; gap: clamp(2px, 0.6vw, 6px); }
+.splash__lock { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(2px, 0.6vw, 6px); }
 .splash__ln {
   font-family: "Inter", sans-serif; font-weight: 800;
   font-size: clamp(30px, 6.6vw, 58px); line-height: 1.0; letter-spacing: 0.01em;
-  text-transform: uppercase; color: var(--text); white-space: nowrap;
-  clip-path: inset(0 100% 0 0);
-  animation: sp-wipe 0.8s var(--ease) forwards;
+  text-align: left; text-transform: uppercase; color: var(--text); white-space: nowrap;
+  clip-path: inset(0 100% 0 0); transform: translateX(-14px);
+  animation: sp-lnin 0.75s var(--ease) forwards;
 }
 .splash__ln:nth-child(1) { animation-delay: 1.15s; }
 .splash__ln:nth-child(2) { animation-delay: 1.4s; }
@@ -963,8 +964,9 @@ textarea.input { resize: vertical; min-height: 70px; }
 
 @keyframes sp-fade  { to { opacity: 1; transform: none; } }
 @keyframes sp-iso   { to { opacity: 1; transform: none; } }
+@keyframes sp-rise  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes sp-lineY { to { transform: scaleY(1); } }
-@keyframes sp-wipe  { to { clip-path: inset(0 0 0 0); } }
+@keyframes sp-lnin  { to { clip-path: inset(0 0 0 0); transform: none; } }
 
 .splash__skip {
   position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); left: 0; right: 0; z-index: 1;
@@ -973,15 +975,17 @@ textarea.input { resize: vertical; min-height: 70px; }
 }
 
 #splash.instant *, #splash.instant::before, #splash.instant::after { animation: none !important; }
+#splash.instant .splash__center { opacity: 1 !important; transform: none !important; }
 #splash.instant .splash__iso { opacity: 1 !important; transform: none !important; }
-#splash.instant .splash__ln { clip-path: inset(0 0 0 0) !important; }
+#splash.instant .splash__ln { clip-path: inset(0 0 0 0) !important; transform: none !important; }
 #splash.instant .splash__div { transform: scaleY(1); }
 #splash.instant::before, #splash.instant::after { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   #splash *, #splash::before, #splash::after { animation: none !important; }
+  .splash__center { opacity: 1 !important; transform: none !important; }
   .splash__iso { opacity: 1 !important; transform: none !important; }
-  .splash__ln { clip-path: inset(0 0 0 0) !important; }
+  .splash__ln { clip-path: inset(0 0 0 0) !important; transform: none !important; }
   .splash__div { transform: scaleY(1); }
   #splash::before, #splash::after { opacity: 1; }
 }
@@ -1202,3 +1206,32 @@ textarea.input { resize: vertical; min-height: 70px; }
 .tcard--pieza { border-left: 3px solid var(--amber); }
 .pieza-tag { color: var(--amber-hi); font-weight: 700; font-size: 12px; margin-right: 2px; }
 .pieza-chip { border-color: var(--amber-a50); color: var(--amber-hi); background: var(--amber-a08); font-size: 10px; }
+
+/* ============================================================
+   FASE 19 — Usuarios y roles + animación de entrada a la app
+   ============================================================ */
+.app.active .main { animation: appIn 0.55s var(--ease) both; }
+@keyframes appIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.msg--info { background: var(--amber-a08); border: 1px solid var(--amber-a50); color: var(--amber-hi); }
+
+.users-list { display: flex; flex-direction: column; gap: 10px; max-width: 620px; }
+.urow {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--amber);
+  padding: 12px 14px;
+}
+.urow__id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.urow__id > div { min-width: 0; }
+.urow__id .mini {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  background: var(--amber-a15); color: var(--amber-hi); border: 1px solid var(--amber-a50);
+}
+.urow__name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.urow__you { font-size: 10px; color: var(--amber-hi); border: 1px solid var(--amber-a50); padding: 1px 5px; margin-left: 4px; }
+.urow__mail { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.urow__role { width: auto; flex-shrink: 0; min-width: 150px; }
+.urow__owner { font-size: 12px; font-weight: 700; color: var(--amber-hi); letter-spacing: 0.04em; }
+
+@media (prefers-reduced-motion: reduce) { .app.active .main { animation: none; } }

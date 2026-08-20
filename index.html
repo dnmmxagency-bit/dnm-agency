@@ -146,6 +146,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Clientes
         </button>
+
+        <div class="nav__group-label" data-admin-only>Administración</div>
+        <button class="nav__item" data-view="usuarios" data-admin-only type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 2-2"/></svg>
+          Usuarios y roles
+        </button>
       </nav>
 
       <!-- Contenido -->
@@ -265,6 +271,16 @@
           </div>
 
           <div class="clients-grid" id="clientsGrid"></div>
+        </section>
+
+        <!-- VISTA: Usuarios y roles (solo administradores) -->
+        <section class="view" id="view-usuarios">
+          <div class="page-head">
+            <div class="eyebrow">Administración</div>
+            <h2 class="page-title">Usuarios y roles</h2>
+            <p class="page-desc">Asigna quién es administrador. Los administradores pueden agregar, editar y eliminar clientes; los miembros solo pueden verlos.</p>
+          </div>
+          <div class="users-list" id="usersList"></div>
         </section>
 
       </main>
@@ -406,6 +422,7 @@
       </div>
       <div class="modal__body">
         <div id="clientMsg" class="msg hidden"></div>
+        <div id="clientReadonly" class="msg msg--info hidden">Solo lectura — solo los administradores pueden editar clientes.</div>
 
         <div class="modal-section">Identidad</div>
         <div class="field">
