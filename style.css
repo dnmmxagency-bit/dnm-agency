@@ -1292,3 +1292,11 @@ textarea.input { resize: vertical; min-height: 70px; }
 .cprog__bar { height: 6px; background: var(--surface-3); overflow: hidden; }
 .cprog__fill { height: 100%; background: linear-gradient(90deg, var(--amber), var(--amber-hi)); transition: width var(--dur); }
 .cprog__lbl { margin-top: 5px; font-size: 11px; color: var(--text-faint); font-weight: 600; }
+
+/* Info traída de Notion (contenido del cuerpo) */
+.notion-box {
+  max-height: 260px; overflow-y: auto;
+  background: var(--surface-2); border: 1px solid var(--border);
+  padding: 12px 14px; font-size: 13px; line-height: 1.5; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}

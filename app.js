@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v41";
+const APP_VERSION = "v42";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1128,6 +1128,21 @@ function openClientModal(client) {
   $("#cLeadership").value = client?.liderazgo || "";
   $("#cNotes").value = client?.notes || "";
   $("#cReason").value = client?.reason || "";
+
+  // Información traída de Notion (contenido del cuerpo) + enlace
+  const nf = $("#cNotionField");
+  const hasNotion = !!(client && (client.notion_content || client.notion_id));
+  nf.style.display = hasNotion ? "" : "none";
+  if (hasNotion) {
+    $("#cNotionContent").textContent = client.notion_content || "(Sin contenido en el cuerpo de Notion)";
+    const link = $("#btnViewNotion");
+    if (client.notion_id) {
+      link.href = "https://www.notion.so/" + String(client.notion_id).replace(/-/g, "");
+      link.style.display = "";
+    } else {
+      link.style.display = "none";
+    }
+  }
 
   // Responsable: lista del equipo
   const selR = $("#cResponsible");
