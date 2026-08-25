@@ -1272,3 +1272,21 @@ textarea.input { resize: vertical; min-height: 70px; }
 .timer__quick button:hover { border-color: var(--amber); }
 .btn--danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 .tcard__time { color: var(--amber-hi); }
+
+/* Fase 23 — cronómetro en curso + barras de avance (Fase 2 pto2) */
+.tcard__running { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: var(--amber-hi); }
+.tcard__running .rdot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); animation: rpulse 1.2s ease-in-out infinite; }
+@keyframes rpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* Barra de avance por estatus en la tarjeta */
+.tprog { height: 4px; background: var(--surface-3); margin-top: 8px; }
+.tprog__fill { height: 100%; background: var(--amber); transition: width var(--dur); }
+.tprog__fill[data-st="Terminado"] { background: #6bbf6b; }
+.tprog__fill[data-st="Cancelado"] { background: var(--danger); }
+.tprog__fill[data-st="En revisión"] { background: var(--amber-hi); }
+
+/* Barra de avance por cliente */
+.cprog { margin: 10px 0 4px; }
+.cprog__bar { height: 6px; background: var(--surface-3); overflow: hidden; }
+.cprog__fill { height: 100%; background: linear-gradient(90deg, var(--amber), var(--amber-hi)); transition: width var(--dur); }
+.cprog__lbl { margin-top: 5px; font-size: 11px; color: var(--text-faint); font-weight: 600; }

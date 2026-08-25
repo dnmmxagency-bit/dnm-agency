@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v39";
+const APP_VERSION = "v40";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -310,6 +310,25 @@ function closedAtFor(newStatus, prevClosedAt) {
   if (TASK_DONE.includes(newStatus)) return prevClosedAt || new Date().toISOString();
   return null;
 }
+function statusPct(st) {
+  return ({ "Por hacer": 8, "En curso": 45, "En revisión": 78, "Terminado": 100, "Cancelado": 0 })[st] ?? 8;
+}
+function clientProgress(clientId) {
+  let done = 0, total = 0;
+  TASKS.forEach((t) => {
+    if (t.client_id !== clientId) return;
+    const st = taskStatus(t);
+    if (st === "Cancelado") return;
+    total++; if (st === "Terminado") done++;
+  });
+  (typeof CONTENT !== "undefined" ? CONTENT : []).forEach((c) => {
+    if (c.client_id !== clientId) return;
+    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    if (st === "Cancelado") return;
+    total++; if (st === "Terminado") done++;
+  });
+  return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+}
 
 function taskStatus(t) { return TASK_STATUS.includes(t.estado) ? t.estado : "Por hacer"; }
 function taskEtapa(t) {
@@ -464,6 +483,7 @@ function taskCardEl(t) {
       ${t.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(t.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
       ${Array.isArray(t.time_log) && t.time_log.length ? `<span class="tcard__notes tcard__time" title="Tiempo registrado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${escapeHtml(fmtDur(timeTotalMin(t.time_log)))}</span>` : ""}
+      ${myTimerStart(t) ? `<span class="tcard__running" title="Cronómetro en curso"><span class="rdot"></span>en curso</span>` : ""}
       ${(() => {
         const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null;
         if (!pz) return "";
@@ -476,6 +496,7 @@ function taskCardEl(t) {
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
       <span class="assignees">${avatars || '<span style="font-size:11px;color:var(--text-faint)">Sin responsables</span>'}</span>
     </div>
+    <div class="tprog" title="${escapeHtml(taskStatus(t))} · ${statusPct(taskStatus(t))}%"><div class="tprog__fill" data-st="${escapeHtml(taskStatus(t))}" style="width:${statusPct(taskStatus(t))}%"></div></div>
   `;
 
   card.addEventListener("click", () => openTaskModal(t));
@@ -1061,6 +1082,11 @@ function renderClients() {
         ${typeShort ? `<span class="cchip">${escapeHtml(typeShort)}</span>` : ""}
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
+      ${(() => { const p = clientProgress(c.id); if (!p.total) return ""; return `
+      <div class="cprog">
+        <div class="cprog__bar"><div class="cprog__fill" style="width:${p.pct}%"></div></div>
+        <div class="cprog__lbl">${p.done}/${p.total} completadas · ${p.pct}%</div>
+      </div>`; })()}
       <div class="ccard__foot">
         <div class="ccard__badges">
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
@@ -2087,14 +2113,17 @@ function fmtDur(min) {
   if (h) return `${h} h`;
   return `${m} min`;
 }
-function timerKey(id) { return "dnm_timer_" + id; }
+function myTimerStart(task) {
+  const at = (task && task.active_timers) || {};
+  return at[currentProfile?.id] || null;
+}
 function twoDig(n) { return String(n).padStart(2, "0"); }
 
 function stopTick() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 
 function tickClock() {
   if (!editingTask) return;
-  const start = localStorage.getItem(timerKey(editingTask.id));
+  const start = myTimerStart(editingTask);
   const clock = document.getElementById("tTimerClock");
   if (!start || !clock) return;
   let sec = Math.max(0, Math.floor((Date.now() - new Date(start).getTime()) / 1000));
@@ -2142,7 +2171,7 @@ function renderTimeSection() {
   }
 
   // estado del cronómetro
-  const running = !!localStorage.getItem(timerKey(editingTask.id));
+  const running = !!myTimerStart(editingTask);
   const btn = document.getElementById("btnTimer");
   if (running) {
     btn.textContent = "Detener";
@@ -2187,19 +2216,33 @@ function deleteTimeEntry(id) {
   renderTimeSection();
 }
 
-document.getElementById("btnTimer").onclick = () => {
+async function saveActiveTimers() {
   if (!editingTask) return;
-  const key = timerKey(editingTask.id);
-  const start = localStorage.getItem(key);
+  const active_timers = editingTask.active_timers || {};
+  const inList = TASKS.find((t) => t.id === editingTask.id);
+  if (inList) inList.active_timers = active_timers;
+  renderBoard();
+  const { error } = await sb.from("tasks").update({ active_timers }).eq("id", editingTask.id);
+  if (error) toast("No se pudo sincronizar el cronómetro");
+}
+
+document.getElementById("btnTimer").onclick = async () => {
+  if (!editingTask) return;
+  const uid = currentProfile?.id;
+  if (!uid) return;
+  editingTask.active_timers = editingTask.active_timers || {};
+  const start = editingTask.active_timers[uid];
   if (start) {
     // detener
     const mins = Math.max(1, Math.round((Date.now() - new Date(start).getTime()) / 60000));
-    localStorage.removeItem(key);
+    delete editingTask.active_timers[uid];
     stopTick();
+    await saveActiveTimers();
     addTime(mins);
     toast("Se registraron " + fmtDur(mins));
   } else {
-    localStorage.setItem(key, new Date().toISOString());
+    editingTask.active_timers[uid] = new Date().toISOString();
+    await saveActiveTimers();
     renderTimeSection();
   }
 };
