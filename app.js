@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v35";
+const APP_VERSION = "v36";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -188,17 +188,17 @@ async function loadProfile(user) {
   if (!data && !error) {
     const nombre = user.user_metadata?.name || (user.email || "").split("@")[0];
     const up = await sb.from("profiles")
-      .upsert({ id: user.id, name: nombre, email: user.email, role: "member" })
+      .upsert({ id: user.id, name: nombre, email: user.email, role: "editor" })
       .select("*").maybeSingle();
     data = up.data;
   }
-  currentProfile = data || { id: user.id, name: user.email, email: user.email, role: "member" };
+  currentProfile = data || { id: user.id, name: user.email, email: user.email, role: "editor" };
   return currentProfile;
 }
 
 function paintUser(p) {
   $("#userName").textContent = p.name || p.email || "Usuario";
-  $("#userRole").textContent = isAdmin() ? "Administrador" : "Miembro";
+  $("#userRole").textContent = isAdmin() ? "Administrador" : "Editor";
   $("#userAvatar").textContent = initials(p.name || p.email);
   applyRoleGating();
 }
@@ -238,7 +238,10 @@ function switchView(view) {
     initCalendars();
     (view === "actividades" ? calAct : calGrab).render();
   }
-  if (view === "clientes") renderClients();
+  if (view === "clientes") {
+    if (!isAdmin()) { switchView("tablero"); return; }
+    renderClients();
+  }
   if (view === "historial") renderHistorial();
   if (view === "contenido") { renderContent(); renderGuests(); }
   if (view === "usuarios") {
@@ -1932,7 +1935,7 @@ function renderUsuarios() {
   MEMBERS.forEach((m) => {
     const isMe = m.id === currentProfile?.id;
     const isOwner = m.role === "owner";
-    const roleVal = (m.role === "admin" || m.role === "owner") ? "admin" : "member";
+    const roleVal = (m.role === "admin" || m.role === "owner") ? "admin" : "editor";
     const el = document.createElement("div");
     el.className = "urow";
     el.innerHTML = `
@@ -1947,7 +1950,7 @@ function renderUsuarios() {
         ? `<span class="urow__owner">Dueño</span>`
         : `<select class="input urow__role" data-id="${m.id}">
              <option value="admin"  ${roleVal === "admin" ? "selected" : ""}>Administrador</option>
-             <option value="member" ${roleVal === "member" ? "selected" : ""}>Miembro</option>
+             <option value="editor" ${roleVal === "editor" ? "selected" : ""}>Editor</option>
            </select>`}`;
     box.appendChild(el);
   });
