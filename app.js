@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v44";
+const APP_VERSION = "v45";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -416,13 +416,13 @@ function renderBoard() {
 
   const sourceAll = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
-  const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
-  const pieces = piecesAll.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
+  const source = sourceAll;
+  const pieces = piecesAll;
   const total = source.length + pieces.length;
   $("#taskCount").textContent = `${total} ${total === 1 ? "actividad" : "actividades"}`;
 
   const counts = {};
-  ACTIVE_STATUS.forEach((s) => (counts[s] = 0));
+  TASK_STATUS.forEach((s) => (counts[s] = 0));
 
   source.forEach((t) => {
     const st = taskStatus(t);
@@ -432,13 +432,13 @@ function renderBoard() {
   });
 
   pieces.forEach((c) => {
-    const st = ACTIVE_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
     counts[st]++;
     const body = board.querySelector(`.column__body[data-col="${st}"]`);
     if (body) body.appendChild(contentCardEl(c));
   });
 
-  ACTIVE_STATUS.forEach((s) => {
+  TASK_STATUS.forEach((s) => {
     const col = board.querySelector(`.column[data-estado="${s}"]`);
     if (!col) return;
     col.querySelector(".column__count").textContent = counts[s];
@@ -609,7 +609,7 @@ function escapeHtml(s) {
 /* ---- Construcción dinámica de columnas del tablero (por estatus) ---- */
 function buildBoardColumns() {
   const board = $("#board");
-  board.innerHTML = ACTIVE_STATUS.map((s) => `
+  board.innerHTML = TASK_STATUS.map((s) => `
     <div class="column" data-estado="${escapeHtml(s)}">
       <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(s)}</span><span class="column__count">0</span></div>
       <div class="column__body" data-col="${escapeHtml(s)}"></div>
