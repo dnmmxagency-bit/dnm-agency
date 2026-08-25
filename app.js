@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v40";
+const APP_VERSION = "v41";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -496,7 +496,10 @@ function taskCardEl(t) {
       <span class="chip chip--prio" data-p="${escapeHtml(t.prioridad || "Media")}"><span class="pdot"></span>${escapeHtml(t.prioridad || "Media")}</span>
       <span class="assignees">${avatars || '<span style="font-size:11px;color:var(--text-faint)">Sin responsables</span>'}</span>
     </div>
-    <div class="tprog" title="${escapeHtml(taskStatus(t))} · ${statusPct(taskStatus(t))}%"><div class="tprog__fill" data-st="${escapeHtml(taskStatus(t))}" style="width:${statusPct(taskStatus(t))}%"></div></div>
+    <div class="tprog" title="${escapeHtml(taskStatus(t))} · ${statusPct(taskStatus(t))}%">
+      <div class="tprog__bar"><div class="tprog__fill" data-st="${escapeHtml(taskStatus(t))}" style="width:${statusPct(taskStatus(t))}%"></div></div>
+      <span class="tprog__lbl">${escapeHtml(taskStatus(t))} · ${statusPct(taskStatus(t))}%</span>
+    </div>
   `;
 
   card.addEventListener("click", () => openTaskModal(t));
@@ -1082,11 +1085,6 @@ function renderClients() {
         ${typeShort ? `<span class="cchip">${escapeHtml(typeShort)}</span>` : ""}
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
-      ${(() => { const p = clientProgress(c.id); if (!p.total) return ""; return `
-      <div class="cprog">
-        <div class="cprog__bar"><div class="cprog__fill" style="width:${p.pct}%"></div></div>
-        <div class="cprog__lbl">${p.done}/${p.total} completadas · ${p.pct}%</div>
-      </div>`; })()}
       <div class="ccard__foot">
         <div class="ccard__badges">
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>

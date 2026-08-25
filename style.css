@@ -1279,11 +1279,13 @@ textarea.input { resize: vertical; min-height: 70px; }
 @keyframes rpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 /* Barra de avance por estatus en la tarjeta */
-.tprog { height: 4px; background: var(--surface-3); margin-top: 8px; }
+.tprog { margin-top: 10px; }
+.tprog__bar { height: 6px; background: var(--surface-3); overflow: hidden; }
 .tprog__fill { height: 100%; background: var(--amber); transition: width var(--dur); }
 .tprog__fill[data-st="Terminado"] { background: #6bbf6b; }
 .tprog__fill[data-st="Cancelado"] { background: var(--danger); }
 .tprog__fill[data-st="En revisión"] { background: var(--amber-hi); }
+.tprog__lbl { display: block; margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-faint); text-transform: uppercase; }
 
 /* Barra de avance por cliente */
 .cprog { margin: 10px 0 4px; }
