@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v45";
+const APP_VERSION = "v47";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -306,6 +306,7 @@ const CONTENT_DONE_STAGES = ["Programado para publicar", "Publicado"];
 const TASK_STATUS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"];
 const TASK_DONE = ["Terminado", "Cancelado"];
 const ACTIVE_STATUS = ["Por hacer", "En curso", "En revisión"]; // columnas del tablero (lo cerrado va al Historial)
+const BOARD_COLUMNS = ["Por hacer", "En curso", "En revisión"]; // Terminado y Cancelado se archivan directo al Historial
 function closedAtFor(newStatus, prevClosedAt) {
   if (TASK_DONE.includes(newStatus)) return prevClosedAt || new Date().toISOString();
   return null;
@@ -416,13 +417,13 @@ function renderBoard() {
 
   const sourceAll = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
-  const source = sourceAll;
-  const pieces = piecesAll;
+  const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
+  const pieces = piecesAll.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
   const total = source.length + pieces.length;
   $("#taskCount").textContent = `${total} ${total === 1 ? "actividad" : "actividades"}`;
 
   const counts = {};
-  TASK_STATUS.forEach((s) => (counts[s] = 0));
+  BOARD_COLUMNS.forEach((s) => (counts[s] = 0));
 
   source.forEach((t) => {
     const st = taskStatus(t);
@@ -432,13 +433,13 @@ function renderBoard() {
   });
 
   pieces.forEach((c) => {
-    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    const st = BOARD_COLUMNS.includes(c.estatus) ? c.estatus : "Por hacer";
     counts[st]++;
     const body = board.querySelector(`.column__body[data-col="${st}"]`);
     if (body) body.appendChild(contentCardEl(c));
   });
 
-  TASK_STATUS.forEach((s) => {
+  BOARD_COLUMNS.forEach((s) => {
     const col = board.querySelector(`.column[data-estado="${s}"]`);
     if (!col) return;
     col.querySelector(".column__count").textContent = counts[s];
@@ -609,7 +610,7 @@ function escapeHtml(s) {
 /* ---- Construcción dinámica de columnas del tablero (por estatus) ---- */
 function buildBoardColumns() {
   const board = $("#board");
-  board.innerHTML = TASK_STATUS.map((s) => `
+  board.innerHTML = BOARD_COLUMNS.map((s) => `
     <div class="column" data-estado="${escapeHtml(s)}">
       <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(s)}</span><span class="column__count">0</span></div>
       <div class="column__body" data-col="${escapeHtml(s)}"></div>
