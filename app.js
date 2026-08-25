@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v47";
+const APP_VERSION = "v48";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -306,7 +306,8 @@ const CONTENT_DONE_STAGES = ["Programado para publicar", "Publicado"];
 const TASK_STATUS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"];
 const TASK_DONE = ["Terminado", "Cancelado"];
 const ACTIVE_STATUS = ["Por hacer", "En curso", "En revisión"]; // columnas del tablero (lo cerrado va al Historial)
-const BOARD_COLUMNS = ["Por hacer", "En curso", "En revisión"]; // Terminado y Cancelado se archivan directo al Historial
+const BOARD_COLUMNS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"]; // Terminado/Cancelado se ven pero archivan al instante
+const BOARD_ARCHIVE_COLS = ["Terminado", "Cancelado"]; // apartados de archivo: no muestran tarjetas
 function closedAtFor(newStatus, prevClosedAt) {
   if (TASK_DONE.includes(newStatus)) return prevClosedAt || new Date().toISOString();
   return null;
@@ -442,9 +443,15 @@ function renderBoard() {
   BOARD_COLUMNS.forEach((s) => {
     const col = board.querySelector(`.column[data-estado="${s}"]`);
     if (!col) return;
-    col.querySelector(".column__count").textContent = counts[s];
+    const isArchive = BOARD_ARCHIVE_COLS.includes(s);
+    col.querySelector(".column__count").textContent = isArchive ? "" : counts[s];
     const body = col.querySelector(".column__body");
-    if (counts[s] === 0) {
+    if (isArchive) {
+      const hint = document.createElement("div");
+      hint.className = "col-empty col-archive";
+      hint.textContent = "Suelta aquí para archivar →  Historial";
+      body.appendChild(hint);
+    } else if (counts[s] === 0) {
       const empty = document.createElement("div");
       empty.className = "col-empty";
       empty.textContent = "Sin tareas";
