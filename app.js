@@ -1,6 +1,15 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
+const APP_VERSION = "v35";
+try {
+  window.APP_VERSION = APP_VERSION;
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("appVersion");
+    if (el) el.textContent = "DNM Agency Management · " + APP_VERSION;
+  });
+  console.log("DNM Agency Management", APP_VERSION);
+} catch (e) {}
 
 /* ---- Portada / intro ---- */
 (function initSplash() {
@@ -230,6 +239,7 @@ function switchView(view) {
     (view === "actividades" ? calAct : calGrab).render();
   }
   if (view === "clientes") renderClients();
+  if (view === "historial") renderHistorial();
   if (view === "contenido") { renderContent(); renderGuests(); }
   if (view === "usuarios") {
     if (!isAdmin()) { switchView("tablero"); return; }
@@ -292,6 +302,11 @@ const CONTENT_DONE_STAGES = ["Programado para publicar", "Publicado"];
 // Estatus de avance de la tarea (columnas del Tablero)
 const TASK_STATUS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"];
 const TASK_DONE = ["Terminado", "Cancelado"];
+const ACTIVE_STATUS = ["Por hacer", "En curso", "En revisión"]; // columnas del tablero (lo cerrado va al Historial)
+function closedAtFor(newStatus, prevClosedAt) {
+  if (TASK_DONE.includes(newStatus)) return prevClosedAt || new Date().toISOString();
+  return null;
+}
 
 function taskStatus(t) { return TASK_STATUS.includes(t.estado) ? t.estado : "Por hacer"; }
 function taskEtapa(t) {
@@ -305,7 +320,8 @@ let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
 let boardClientFilter = ""; // filtro por cliente en el Tablero
 let editingTask = null; // null = creando; objeto = editando
-let taskNotes = [];     // notas/correcciones en edición dentro del modal
+let taskNotes = [];     // notas generales en edición dentro del modal
+let taskCorrections = []; // correcciones de revisión en edición
 let taskAssignees = []; // responsables seleccionados (chips)
 
 /* ---- Carga inicial de datos al entrar ---- */
@@ -376,13 +392,15 @@ function renderBoard() {
   fillBoardClientFilter();
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
-  const source = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
-  const pieces = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
+  const sourceAll = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
+  const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
+  const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
+  const pieces = piecesAll.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
   const total = source.length + pieces.length;
   $("#taskCount").textContent = `${total} ${total === 1 ? "actividad" : "actividades"}`;
 
   const counts = {};
-  TASK_STATUS.forEach((s) => (counts[s] = 0));
+  ACTIVE_STATUS.forEach((s) => (counts[s] = 0));
 
   source.forEach((t) => {
     const st = taskStatus(t);
@@ -392,13 +410,13 @@ function renderBoard() {
   });
 
   pieces.forEach((c) => {
-    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    const st = ACTIVE_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
     counts[st]++;
     const body = board.querySelector(`.column__body[data-col="${st}"]`);
     if (body) body.appendChild(contentCardEl(c));
   });
 
-  TASK_STATUS.forEach((s) => {
+  ACTIVE_STATUS.forEach((s) => {
     const col = board.querySelector(`.column[data-estado="${s}"]`);
     if (!col) return;
     col.querySelector(".column__count").textContent = counts[s];
@@ -442,6 +460,7 @@ function taskCardEl(t) {
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${t.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(t.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
+      ${Array.isArray(t.corrections) && t.corrections.length ? `<span class="tcard__notes tcard__corr" title="${t.corrections.length} corrección(es)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>${t.corrections.length}</span>` : ""}
       ${(() => {
         const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null;
         if (!pz) return "";
@@ -563,7 +582,7 @@ function escapeHtml(s) {
 /* ---- Construcción dinámica de columnas del tablero (por estatus) ---- */
 function buildBoardColumns() {
   const board = $("#board");
-  board.innerHTML = TASK_STATUS.map((s) => `
+  board.innerHTML = ACTIVE_STATUS.map((s) => `
     <div class="column" data-estado="${escapeHtml(s)}">
       <div class="column__head"><span class="column__title"><span class="dot"></span>${escapeHtml(s)}</span><span class="column__count">0</span></div>
       <div class="column__body" data-col="${escapeHtml(s)}"></div>
@@ -589,12 +608,16 @@ function buildBoardColumns() {
 
 async function updateTaskEstado(task, estado) {
   const prev = task.estado;
+  const prevClosed = task.closed_at || null;
+  const closed_at = closedAtFor(estado, prevClosed);
   task.estado = estado;               // optimista
+  task.closed_at = closed_at;
   renderBoard();
   const { error } = await sb.from("tasks")
-    .update({ estado, updated_at: new Date().toISOString() })
+    .update({ estado, closed_at, updated_at: new Date().toISOString() })
     .eq("id", task.id);
-  if (error) { task.estado = prev; renderBoard(); toast("No se pudo mover la tarea"); }
+  if (error) { task.estado = prev; task.closed_at = prevClosed; renderBoard(); toast("No se pudo mover la tarea"); }
+  else if (TASK_DONE.includes(estado)) toast("Tarea cerrada y archivada en el Historial");
 }
 
 async function updateTaskProceso(task, proceso) {
@@ -609,12 +632,16 @@ async function updateTaskProceso(task, proceso) {
 
 async function updateContentEstatus(piece, estatus) {
   const prev = piece.estatus;
+  const prevClosed = piece.closed_at || null;
+  const closed_at = closedAtFor(estatus, prevClosed);
   piece.estatus = estatus;            // optimista
+  piece.closed_at = closed_at;
   renderBoard(); renderContent();
   const { error } = await sb.from("content_items")
-    .update({ estatus, updated_at: new Date().toISOString() })
+    .update({ estatus, closed_at, updated_at: new Date().toISOString() })
     .eq("id", piece.id);
-  if (error) { piece.estatus = prev; renderBoard(); renderContent(); toast("No se pudo mover la pieza"); }
+  if (error) { piece.estatus = prev; piece.closed_at = prevClosed; renderBoard(); renderContent(); toast("No se pudo mover la pieza"); }
+  else if (TASK_DONE.includes(estatus)) toast("Pieza cerrada y archivada en el Historial");
 }
 
 async function updateContentEstado(piece, estado) {
@@ -683,8 +710,11 @@ function openTaskModal(task, prefill, context) {
 
   // Notas / correcciones (copia de trabajo)
   taskNotes = Array.isArray(task?.notes) ? JSON.parse(JSON.stringify(task.notes)) : [];
+  taskCorrections = Array.isArray(task?.corrections) ? JSON.parse(JSON.stringify(task.corrections)) : [];
   $("#tNoteInput").value = "";
+  $("#tCorrInput").value = "";
   renderTaskNotes();
+  renderTaskCorr();
 
   // Prefill al crear desde el calendario (fecha y/o etapa)
   if (!task && prefill) {
@@ -731,6 +761,8 @@ $("#btnSaveTask").onclick = async () => {
     content_id: $("#tContent").value || null,
     assignee_ids,
     notes: taskNotes,
+    corrections: taskCorrections,
+    closed_at: closedAtFor($("#tEstado").value, editingTask?.closed_at || null),
     updated_at: new Date().toISOString(),
   };
 
@@ -802,12 +834,23 @@ function createCalendar(mountId, opts) {
   let mode = "month"; // 'month' | 'week'
   cursor.setHours(0, 0, 0, 0);
 
-  function tasksByDay() {
+  function eventsByDay() {
     const map = {};
     TASKS.filter(opts.filter).forEach((t) => {
       if (!t.due_date) return;
-      (map[t.due_date] = map[t.due_date] || []).push(t);
+      (map[t.due_date] = map[t.due_date] || []).push({
+        kind: "task", id: t.id, title: t.title, estado: t.estado, prioridad: t.prioridad,
+      });
     });
+    if (opts.includeContent && typeof CONTENT !== "undefined" && Array.isArray(CONTENT)) {
+      CONTENT.forEach((c) => {
+        if (!c.delivery_date) return;
+        (map[c.delivery_date] = map[c.delivery_date] || []).push({
+          kind: "content", id: c.id,
+          title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
+        });
+      });
+    }
     return map;
   }
 
@@ -850,7 +893,7 @@ function createCalendar(mountId, opts) {
   }
 
   function render() {
-    const byDay = tasksByDay();
+    const byDay = eventsByDay();
     const todayStr = ymd(new Date());
     const cells = mode === "month" ? cellsForMonth() : cellsForWeek();
     const maxPills = mode === "week" ? 12 : 3;
@@ -865,9 +908,12 @@ function createCalendar(mountId, opts) {
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
       const list = (byDay[key] || []);
 
-      let pills = list.slice(0, maxPills).map((t) => {
-        const done = TASK_DONE.includes(t.estado);
-        return `<div class="cal__pill ${done ? "done" : ""}" data-prioridad="${escapeHtml(t.prioridad || "Media")}" data-id="${t.id}" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>`;
+      let pills = list.slice(0, maxPills).map((ev) => {
+        if (ev.kind === "content") {
+          return `<div class="cal__pill cal__pill--content" data-kind="content" data-id="${ev.id}" title="Entrega: ${escapeHtml(ev.title)}">🎬 ${escapeHtml(ev.title)}</div>`;
+        }
+        const done = TASK_DONE.includes(ev.estado);
+        return `<div class="cal__pill ${done ? "done" : ""}" data-kind="task" data-prioridad="${escapeHtml(ev.prioridad || "Media")}" data-id="${ev.id}" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</div>`;
       }).join("");
       if (list.length > maxPills) pills += `<div class="cal__more">+${list.length - maxPills} más</div>`;
 
@@ -903,12 +949,17 @@ function createCalendar(mountId, opts) {
       b.onclick = () => { mode = b.dataset.mode; render(); };
     });
 
-    // click en una tarjeta -> editar; click en el día -> nueva tarea con esa fecha
+    // click en una tarjeta -> editar (tarea o pieza)
     mount.querySelectorAll(".cal__pill").forEach((p) => {
       p.onclick = (e) => {
         e.stopPropagation();
-        const t = TASKS.find((x) => x.id === p.dataset.id);
-        if (t) openTaskModal(t, null, opts.context);
+        if (p.dataset.kind === "content") {
+          const c = CONTENT.find((x) => x.id === p.dataset.id);
+          if (c) openContentModal(c);
+        } else {
+          const t = TASKS.find((x) => x.id === p.dataset.id);
+          if (t) openTaskModal(t, null, opts.context);
+        }
       };
     });
     mount.querySelectorAll(".cal__cell").forEach((c) => {
@@ -933,6 +984,7 @@ function initCalendars() {
   if (!calAct) {
     calAct = createCalendar("cal-actividades", {
       filter: () => true,
+      includeContent: true,
     });
   }
   if (!calGrab) {
@@ -1284,17 +1336,13 @@ function refreshClientFilesPanel() {
 }
 
 /* ============================================================
-   FASE 6 — Notas y correcciones (dentro del modal de tarea)
+   FASE 6 / 20 — Notas y Correcciones (logs dentro del modal de tarea)
    ============================================================ */
-function renderTaskNotes() {
-  const box = $("#tNotesList");
-  if (!taskNotes.length) {
-    box.innerHTML = '<div class="notes-empty">Aún no hay notas. Agrega correcciones o comentarios abajo.</div>';
-    return;
-  }
+function renderLog(boxSel, arr, emptyMsg, onChange) {
+  const box = $(boxSel);
+  if (!arr.length) { box.innerHTML = `<div class="notes-empty">${escapeHtml(emptyMsg)}</div>`; return; }
   box.innerHTML = "";
-  // más recientes primero
-  taskNotes.slice().reverse().forEach((note) => {
+  arr.slice().reverse().forEach((note) => {
     const row = document.createElement("div");
     row.className = "note";
     row.innerHTML = `
@@ -1304,38 +1352,36 @@ function renderTaskNotes() {
       </div>
       <div class="note__body">${escapeHtml(note.body)}</div>`;
     const del = document.createElement("button");
-    del.className = "note__del";
-    del.type = "button";
-    del.title = "Borrar nota";
-    del.innerHTML = "&times;";
-    del.onclick = () => {
-      taskNotes = taskNotes.filter((n) => n.id !== note.id);
-      renderTaskNotes();
-    };
+    del.className = "note__del"; del.type = "button"; del.title = "Borrar"; del.innerHTML = "&times;";
+    del.onclick = () => { const i = arr.findIndex((n) => n.id === note.id); if (i >= 0) arr.splice(i, 1); onChange(); };
     row.querySelector(".note__meta").appendChild(del);
     box.appendChild(row);
   });
 }
-
-function newId() {
-  try { return crypto.randomUUID(); } catch (e) { return "n_" + Date.now() + "_" + Math.random().toString(16).slice(2); }
-}
-
-$("#btnAddNote").onclick = () => {
-  const input = $("#tNoteInput");
+function addLogEntry(arr, inputSel, onChange) {
+  const input = $(inputSel);
   const body = input.value.trim();
   if (!body) return;
-  taskNotes.push({
-    id: newId(),
-    body,
+  arr.push({
+    id: newId(), body,
     author_id: currentProfile?.id || null,
     author_name: currentProfile?.name || currentProfile?.email || "Alguien",
     created_at: new Date().toISOString(),
   });
   input.value = "";
-  renderTaskNotes();
+  onChange();
   input.focus();
-};
+}
+
+function renderTaskNotes() { renderLog("#tNotesList", taskNotes, "Aún no hay notas.", renderTaskNotes); }
+function renderTaskCorr()  { renderLog("#tCorrList", taskCorrections, "Aún no hay correcciones.", renderTaskCorr); }
+
+function newId() {
+  try { return crypto.randomUUID(); } catch (e) { return "n_" + Date.now() + "_" + Math.random().toString(16).slice(2); }
+}
+
+$("#btnAddNote").onclick = () => addLogEntry(taskNotes, "#tNoteInput", renderTaskNotes);
+$("#btnAddCorr").onclick = () => addLogEntry(taskCorrections, "#tCorrInput", renderTaskCorr);
 
 /* ============================================================
    FASE 9 — Contenido (piezas/episodios) + Invitados
@@ -1499,6 +1545,7 @@ function openContentModal(item) {
   $("#coDrive").value = item?.drive_url || "";
   $("#coReels").value = item?.reels_url || "";
   $("#coNotes").value = item?.notes || "";
+  $("#coCorr").value = item?.corrections || "";
 
   $("#btnDeleteContent").classList.toggle("hidden", !(item && (item.owner_id === currentProfile?.id || currentProfile?.role === "owner")));
 
@@ -1529,6 +1576,7 @@ $("#btnSaveContent").onclick = async () => {
     chapter: chapterRaw === "" ? null : Number(chapterRaw),
     estado: $("#coEstado").value,
     estatus: $("#coEstatus").value,
+    closed_at: closedAtFor($("#coEstatus").value, editingContent?.closed_at || null),
     record_date: $("#coRecord").value || null,
     release_date: $("#coRelease").value || null,
     delivery_date: $("#coDelivery").value || null,
@@ -1539,6 +1587,7 @@ $("#btnSaveContent").onclick = async () => {
     drive_url: normalizeUrl($("#coDrive").value),
     reels_url: normalizeUrl($("#coReels").value),
     notes: $("#coNotes").value.trim() || null,
+    corrections: $("#coCorr").value.trim() || null,
     updated_at: new Date().toISOString(),
   };
   const btn = $("#btnSaveContent"); btn.disabled = true; $("#btnSaveContentLabel").innerHTML = '<span class="spinner"></span>';
@@ -1932,4 +1981,90 @@ function applyClientModalRole() {
   if (up) up.style.display = admin ? "" : "none";
   const ro = document.getElementById("clientReadonly");
   if (ro) ro.classList.toggle("hidden", admin);
+}
+
+/* ============================================================
+   FASE 2 — Historial / archivo por cliente
+   ============================================================ */
+let histClientFilter = "";
+
+function fmtCloseDate(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  } catch (e) { return "—"; }
+}
+
+function fillHistClientFilter() {
+  const sel = document.getElementById("histClientFilter");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los clientes</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  sel.value = cur;
+  if (!sel.dataset.wired) {
+    sel.dataset.wired = "1";
+    sel.onchange = () => { histClientFilter = sel.value; renderHistorial(); };
+  }
+}
+
+function renderHistorial() {
+  fillHistClientFilter();
+  const box = document.getElementById("histList");
+  if (!box) return;
+
+  // Reunir cerradas: tareas + piezas
+  const items = [];
+  TASKS.forEach((t) => {
+    if (!TASK_DONE.includes(taskStatus(t))) return;
+    items.push({
+      kind: "Tarea", id: t.id, title: t.title, client_id: t.client_id,
+      estado: taskStatus(t), closed_at: t.closed_at || t.updated_at || null,
+      assignees: (t.assignee_ids || []), obj: t,
+    });
+  });
+  CONTENT.forEach((c) => {
+    const st = TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer";
+    if (!TASK_DONE.includes(st)) return;
+    items.push({
+      kind: "Pieza", id: c.id, title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
+      client_id: c.client_id, estado: st, closed_at: c.closed_at || c.updated_at || null,
+      assignees: (c.assignee_ids || []), obj: c, isContent: true,
+    });
+  });
+
+  let list = items;
+  if (histClientFilter) list = list.filter((i) => i.client_id === histClientFilter);
+  list.sort((a, b) => (b.closed_at || "").localeCompare(a.closed_at || ""));
+
+  document.getElementById("histCount").textContent = `${list.length} ${list.length === 1 ? "cerrada" : "cerradas"}`;
+
+  if (!list.length) {
+    box.innerHTML = `<div class="board-empty"><strong>Sin cierres todavía</strong><span>Cuando marques una tarea o pieza como Terminado o Cancelado, aparecerá aquí.</span></div>`;
+    return;
+  }
+
+  box.innerHTML = "";
+  list.forEach((i) => {
+    const cliente = CLIENTS.find((x) => x.id === i.client_id);
+    const doneCls = i.estado === "Cancelado" ? "muted" : "done";
+    let avatars = "";
+    i.assignees.slice(0, 3).forEach((id) => { avatars += `<span class="mini" title="${escapeHtml(memberName(id))}">${escapeHtml(initials(memberName(id)))}</span>`; });
+    const row = document.createElement("div");
+    row.className = "litem";
+    row.innerHTML = `
+      <div class="litem__chap" style="border-color:var(--border-strong);color:var(--text-faint)">${i.kind === "Pieza" ? "🎬" : "✓"}</div>
+      <div class="litem__main">
+        <div class="litem__title">${escapeHtml(i.title)}</div>
+        <div class="litem__meta">${escapeHtml([i.kind, cliente ? cliente.name : "Sin cliente"].join(" · "))}</div>
+        ${avatars ? `<div class="assignees" style="margin-top:6px">${avatars}</div>` : ""}
+      </div>
+      <div class="litem__right">
+        <span class="estado-chip ${doneCls}">${escapeHtml(i.estado)}</span>
+        <div class="litem__dates"><div><span class="lbl">Cerrada:</span> ${fmtCloseDate(i.closed_at)}</div></div>
+      </div>`;
+    row.onclick = () => { if (i.isContent) openContentModal(i.obj); else openTaskModal(i.obj); };
+    box.appendChild(row);
+  });
 }

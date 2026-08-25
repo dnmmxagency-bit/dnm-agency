@@ -1242,3 +1242,17 @@ textarea.input { resize: vertical; min-height: 70px; }
 }
 
 @media (prefers-reduced-motion: reduce) { .app.active .main { animation: none; } }
+
+/* Fase 20 — Notas vs Correcciones */
+.field-hint { font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; font-size: 11px; }
+.notes-list--corr .note { border-left: 2px solid var(--amber); }
+.tcard__corr { color: var(--amber-hi); }
+
+/* Indicador de versión (para verificar despliegues) */
+.app-version { margin-top: 14px; text-align: center; font-size: 10px; letter-spacing: 0.08em; color: var(--text-faint); text-transform: uppercase; }
+
+/* Fase 4 — pill de contenido (fecha de entrega) en el calendario */
+.cal__pill--content {
+  background: var(--amber-a08); color: var(--amber-hi);
+  border-left: 3px solid var(--amber);
+}

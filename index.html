@@ -94,6 +94,7 @@
           ¿No tienes cuenta?
           <a href="#" id="linkSwitch" style="color:var(--amber)">Créala aquí</a>
         </p>
+        <div class="app-version" id="appVersion"></div>
       </div>
     </div>
   </section>
@@ -146,6 +147,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Clientes
         </button>
+        <button class="nav__item" data-view="historial" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg>
+          Historial
+        </button>
 
         <div class="nav__group-label" data-admin-only>Administración</div>
         <button class="nav__item" data-view="usuarios" data-admin-only type="button">
@@ -186,7 +191,7 @@
           <div class="page-head">
             <div class="eyebrow">Tareas</div>
             <h2 class="page-title">Calendario de actividades y pendientes</h2>
-            <p class="page-desc">Todo lo agendado por fecha límite, sin importar el proceso. Toca un día vacío para crear una tarea ahí, o una tarjeta para editarla.</p>
+            <p class="page-desc">Todo lo agendado por su fecha de entrega: tareas y piezas de contenido. Toca un día vacío para crear una tarea ahí, o una tarjeta para editarla.</p>
           </div>
           <div class="cal" id="cal-actividades"></div>
         </section>
@@ -271,6 +276,23 @@
           </div>
 
           <div class="clients-grid" id="clientsGrid"></div>
+        </section>
+
+        <!-- VISTA: Historial por cliente -->
+        <section class="view" id="view-historial">
+          <div class="page-head">
+            <div class="eyebrow">Directorio</div>
+            <h2 class="page-title">Historial</h2>
+            <p class="page-desc">Todo lo que ya se trabajó y cerró (tareas y piezas), con su fecha de cierre. Filtra por cliente para ver su log maestro.</p>
+          </div>
+          <div class="toolbar">
+            <select class="input" id="histClientFilter" style="width:auto">
+              <option value="">Todos los clientes</option>
+            </select>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="histCount">0 cerradas</span>
+          </div>
+          <div class="content-list" id="histList"></div>
         </section>
 
         <!-- VISTA: Usuarios y roles (solo administradores) -->
@@ -358,7 +380,7 @@
 
         <div class="grid-2">
           <div class="field">
-            <label for="tFecha">Fecha límite</label>
+            <label for="tFecha">Fecha de entrega</label>
             <input class="input" type="date" id="tFecha" />
           </div>
           <div class="field">
@@ -392,12 +414,23 @@
         </div>
 
         <div class="field">
-          <label>Notas y correcciones</label>
+          <label>Notas <span class="field-hint">— comentarios generales</span></label>
           <div class="notes-list" id="tNotesList"></div>
           <div class="note-add">
-            <textarea class="input" id="tNoteInput" placeholder="Escribe una corrección o nota…"></textarea>
+            <textarea class="input" id="tNoteInput" placeholder="Escribe una nota o comentario…"></textarea>
             <div class="note-add__row">
               <button class="btn btn--ghost btn--sm" id="btnAddNote" type="button">Agregar nota</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Correcciones <span class="field-hint">— feedback de revisión</span></label>
+          <div class="notes-list notes-list--corr" id="tCorrList"></div>
+          <div class="note-add">
+            <textarea class="input" id="tCorrInput" placeholder="Escribe una corrección de revisión…"></textarea>
+            <div class="note-add__row">
+              <button class="btn btn--ghost btn--sm" id="btnAddCorr" type="button">Agregar corrección</button>
             </div>
           </div>
         </div>
@@ -635,6 +668,10 @@
         <div class="field">
           <label for="coNotes">Notas</label>
           <textarea class="input" id="coNotes" placeholder="Notas de la pieza…"></textarea>
+        </div>
+        <div class="field">
+          <label for="coCorr">Correcciones <span class="field-hint">— feedback de revisión</span></label>
+          <textarea class="input" id="coCorr" placeholder="Correcciones de revisión…"></textarea>
         </div>
       </div>
       <div class="modal__foot">
