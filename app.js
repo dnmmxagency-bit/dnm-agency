@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v36";
+const APP_VERSION = "v39";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -463,7 +463,7 @@ function taskCardEl(t) {
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${t.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(t.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
       ${Array.isArray(t.notes) && t.notes.length ? `<span class="tcard__notes" title="${t.notes.length} nota(s)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 10h8M8 14h5M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>${t.notes.length}</span>` : ""}
-      ${Array.isArray(t.corrections) && t.corrections.length ? `<span class="tcard__notes tcard__corr" title="${t.corrections.length} corrección(es)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>${t.corrections.length}</span>` : ""}
+      ${Array.isArray(t.time_log) && t.time_log.length ? `<span class="tcard__notes tcard__time" title="Tiempo registrado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${escapeHtml(fmtDur(timeTotalMin(t.time_log)))}</span>` : ""}
       ${(() => {
         const pz = t.content_id ? CONTENT.find((c) => c.id === t.content_id) : null;
         if (!pz) return "";
@@ -718,6 +718,7 @@ function openTaskModal(task, prefill, context) {
   $("#tCorrInput").value = "";
   renderTaskNotes();
   renderTaskCorr();
+  renderTimeSection();
 
   // Prefill al crear desde el calendario (fecha y/o etapa)
   if (!task && prefill) {
@@ -735,6 +736,7 @@ function openTaskModal(task, prefill, context) {
 }
 
 function closeTaskModal() {
+  stopTick();
   taskOverlay.classList.remove("open");
   editingTask = null;
 }
@@ -2071,3 +2073,141 @@ function renderHistorial() {
     box.appendChild(row);
   });
 }
+
+/* ============================================================
+   FASE 22 — Registro de tiempo por tarea (timer + manual)
+   ============================================================ */
+let timerInterval = null;
+
+function timeTotalMin(arr) { return (arr || []).reduce((s, e) => s + (Number(e.minutes) || 0), 0); }
+function fmtDur(min) {
+  min = Math.round(min || 0);
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return `${h} h ${m} min`;
+  if (h) return `${h} h`;
+  return `${m} min`;
+}
+function timerKey(id) { return "dnm_timer_" + id; }
+function twoDig(n) { return String(n).padStart(2, "0"); }
+
+function stopTick() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+
+function tickClock() {
+  if (!editingTask) return;
+  const start = localStorage.getItem(timerKey(editingTask.id));
+  const clock = document.getElementById("tTimerClock");
+  if (!start || !clock) return;
+  let sec = Math.max(0, Math.floor((Date.now() - new Date(start).getTime()) / 1000));
+  const h = Math.floor(sec / 3600); sec -= h * 3600;
+  const m = Math.floor(sec / 60); const s = sec - m * 60;
+  clock.textContent = `${twoDig(h)}:${twoDig(m)}:${twoDig(s)}`;
+}
+
+function renderTimeSection() {
+  const box = document.getElementById("tTimeBox");
+  const hint = document.getElementById("tTimeHint");
+  if (!box) return;
+  stopTick();
+  if (!editingTask) {           // tarea nueva: aún no se puede registrar tiempo
+    box.classList.add("hidden");
+    if (hint) hint.classList.remove("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+  if (hint) hint.classList.add("hidden");
+
+  const log = Array.isArray(editingTask.time_log) ? editingTask.time_log : [];
+  document.getElementById("tTimeTotal").textContent = "Total: " + fmtDur(timeTotalMin(log));
+
+  // lista de entradas
+  const list = document.getElementById("tTimeList");
+  if (!log.length) {
+    list.innerHTML = '<div class="notes-empty">Sin tiempo registrado aún.</div>';
+  } else {
+    list.innerHTML = "";
+    log.slice().reverse().forEach((e) => {
+      const row = document.createElement("div");
+      row.className = "note";
+      row.innerHTML = `
+        <div class="note__meta">
+          <span class="note__who">${escapeHtml(fmtDur(e.minutes))} · ${escapeHtml(e.author_name || "Alguien")}</span>
+          <span>${escapeHtml(fmtDateTime(e.created_at))}</span>
+        </div>`;
+      const del = document.createElement("button");
+      del.className = "note__del"; del.type = "button"; del.title = "Borrar"; del.innerHTML = "&times;";
+      del.onclick = () => deleteTimeEntry(e.id);
+      row.querySelector(".note__meta").appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  // estado del cronómetro
+  const running = !!localStorage.getItem(timerKey(editingTask.id));
+  const btn = document.getElementById("btnTimer");
+  if (running) {
+    btn.textContent = "Detener";
+    btn.classList.remove("btn--primary"); btn.classList.add("btn--danger");
+    tickClock();
+    timerInterval = setInterval(tickClock, 1000);
+  } else {
+    btn.textContent = "Iniciar";
+    btn.classList.add("btn--primary"); btn.classList.remove("btn--danger");
+    document.getElementById("tTimerClock").textContent = "00:00:00";
+  }
+}
+
+async function saveTimeLog() {
+  if (!editingTask) return;
+  const time_log = editingTask.time_log || [];
+  const inList = TASKS.find((t) => t.id === editingTask.id);
+  if (inList) inList.time_log = time_log;
+  renderBoard();
+  const { error } = await sb.from("tasks").update({ time_log }).eq("id", editingTask.id);
+  if (error) toast("No se pudo guardar el tiempo");
+}
+
+function addTime(minutes) {
+  minutes = Math.round(Number(minutes) || 0);
+  if (minutes <= 0 || !editingTask) return;
+  editingTask.time_log = Array.isArray(editingTask.time_log) ? editingTask.time_log : [];
+  editingTask.time_log.push({
+    id: newId(), minutes,
+    author_id: currentProfile?.id || null,
+    author_name: currentProfile?.name || currentProfile?.email || "Alguien",
+    created_at: new Date().toISOString(),
+  });
+  saveTimeLog();
+  renderTimeSection();
+}
+
+function deleteTimeEntry(id) {
+  if (!editingTask) return;
+  editingTask.time_log = (editingTask.time_log || []).filter((e) => e.id !== id);
+  saveTimeLog();
+  renderTimeSection();
+}
+
+document.getElementById("btnTimer").onclick = () => {
+  if (!editingTask) return;
+  const key = timerKey(editingTask.id);
+  const start = localStorage.getItem(key);
+  if (start) {
+    // detener
+    const mins = Math.max(1, Math.round((Date.now() - new Date(start).getTime()) / 60000));
+    localStorage.removeItem(key);
+    stopTick();
+    addTime(mins);
+    toast("Se registraron " + fmtDur(mins));
+  } else {
+    localStorage.setItem(key, new Date().toISOString());
+    renderTimeSection();
+  }
+};
+document.getElementById("btnAddTime").onclick = () => {
+  const inp = document.getElementById("tTimeManual");
+  addTime(inp.value);
+  inp.value = "";
+};
+document.querySelectorAll(".timer__quick button").forEach((b) => {
+  b.onclick = () => addTime(b.dataset.min);
+});

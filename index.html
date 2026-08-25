@@ -413,6 +413,28 @@
           </div>
         </div>
 
+        <div class="field" id="tTimeField">
+          <label>Tiempo registrado <span class="field-hint">— tiempo real en esta tarea</span></label>
+          <div id="tTimeHint" class="files__hint hidden">Guarda la tarea para poder registrar tiempo.</div>
+          <div id="tTimeBox">
+            <div class="timer">
+              <span class="timer__clock" id="tTimerClock">00:00:00</span>
+              <button class="btn btn--primary btn--sm" id="btnTimer" type="button">Iniciar</button>
+              <span class="timer__total" id="tTimeTotal">Total: 0 min</span>
+            </div>
+            <div class="timer__manual">
+              <input class="input" type="number" id="tTimeManual" placeholder="min" min="1" />
+              <button class="btn btn--ghost btn--sm" id="btnAddTime" type="button">Agregar</button>
+              <span class="timer__quick">
+                <button type="button" data-min="15">+15</button>
+                <button type="button" data-min="30">+30</button>
+                <button type="button" data-min="60">+60</button>
+              </span>
+            </div>
+            <div class="notes-list" id="tTimeList"></div>
+          </div>
+        </div>
+
         <div class="field">
           <label>Notas <span class="field-hint">— comentarios generales</span></label>
           <div class="notes-list" id="tNotesList"></div>
