@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v42";
+const APP_VERSION = "v44";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1192,6 +1192,7 @@ $("#btnSaveClient").onclick = async () => {
     liderazgo: $("#cLeadership").value.trim() || null,
     notes: $("#cNotes").value.trim() || null,
     reason: $("#cReason").value.trim() || null,
+    sync_source: "app",
   };
 
   const btn = $("#btnSaveClient");
@@ -1495,6 +1496,7 @@ function renderContent() {
   const box = $("#contentList");
   let list = CONTENT;
   if (contentFilterEstado) list = list.filter((c) => c.estado === contentFilterEstado);
+  else list = list.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
   if (contentClientFilter) list = list.filter((c) => c.client_id === contentClientFilter);
   if (contentMine) list = list.filter((c) => (Array.isArray(c.assignee_ids) ? c.assignee_ids : []).includes(currentProfile?.id));
 
