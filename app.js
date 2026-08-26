@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v63";
+const APP_VERSION = "v64";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -378,6 +378,7 @@ let MEMBERS = [];   // [{id,name,email,role}]
 let CLIENTS = [];   // [{id,name,active}]
 let TASKS = [];     // tareas
 let boardClientFilter = ""; // filtro por cliente en el Tablero
+let boardPersonFilter = ""; // filtro por persona (solo admin)
 let editingTask = null; // null = creando; objeto = editando
 let taskNotes = [];     // notas generales en edición dentro del modal
 let taskCorrections = []; // correcciones de revisión en edición
@@ -455,6 +456,18 @@ function fillBoardClientFilter() {
     sel.dataset.wired = "1";
     sel.onchange = () => { boardClientFilter = sel.value; renderBoard(); };
   }
+  // Filtro por persona (solo administradores)
+  const selP = $("#boardPersonFilter");
+  if (selP) {
+    const curP = selP.value;
+    selP.innerHTML = '<option value="">Todas las personas</option>' +
+      MEMBERS.map((m) => `<option value="${m.id}">${escapeHtml(m.name || m.email)}</option>`).join("");
+    selP.value = curP;
+    if (!selP.dataset.wired) {
+      selP.dataset.wired = "1";
+      selP.onchange = () => { boardPersonFilter = selP.value; renderBoard(); rerenderCalendars(); };
+    }
+  }
 }
 
 /* ---- Render del tablero ---- */
@@ -464,7 +477,9 @@ function renderBoard() {
   fillBoardClientFilter();
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
-  const sourceAll = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
+  let baseTasks = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
+  if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => isMyTask(t, boardPersonFilter));
+  const sourceAll = baseTasks;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
   const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
   const pieces = piecesAll.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus));
@@ -960,7 +975,9 @@ function createCalendar(mountId, opts) {
       });
       return map;
     }
-    TASKS.filter(opts.filter).forEach((t) => {
+    TASKS.filter(opts.filter)
+      .filter((t) => (!boardPersonFilter || !isAdmin() || isMyTask(t, boardPersonFilter)))
+      .forEach((t) => {
       if (!t.due_date) return;
       (map[t.due_date] = map[t.due_date] || []).push({
         kind: "task", id: t.id, title: t.title, estado: t.estado, prioridad: t.prioridad,
