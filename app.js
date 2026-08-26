@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v60";
+const APP_VERSION = "v61";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -74,6 +74,24 @@ function initials(name) {
   if (!name) return "–";
   const p = name.trim().split(/\s+/);
   return ((p[0]?.[0] || "") + (p[1]?.[0] || "")).toUpperCase() || "–";
+}
+
+/* Avatar de cliente: logo si existe, si no un círculo con la inicial */
+function clientById(id) {
+  return (typeof CLIENTS !== "undefined" ? CLIENTS : []).find((c) => c.id === id) || null;
+}
+function clientAvatar(client, size) {
+  const s = size || 24;
+  if (!client) return "";
+  if (client.logo_url) {
+    return `<span class="cli-avatar" style="width:${s}px;height:${s}px"><img src="${escapeHtml(client.logo_url)}" alt="${escapeHtml(client.name || "")}" /></span>`;
+  }
+  return `<span class="cli-avatar cli-avatar--initial" style="width:${s}px;height:${s}px;font-size:${Math.round(s * 0.42)}px">${escapeHtml(initials(client.name))}</span>`;
+}
+/* Logo + nombre en línea */
+function clientChip(client, size) {
+  if (!client) return "";
+  return `<span class="cli-chip">${clientAvatar(client, size)}<span class="cli-chip__name">${escapeHtml(client.name || "")}</span></span>`;
 }
 
 /* Traduce errores comunes de Supabase a español claro */
@@ -502,7 +520,7 @@ function taskCardEl(t) {
       <select class="tstage" data-stage-select title="Etapa de producción">${ESTADOS.map((e) => `<option ${e === taskEtapa(t) ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
     </div>
     <div class="tcard__row">
-      ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
+      ${cliente ? `<span class="chip chip--cliente">${clientAvatar(cliente, 16)}${escapeHtml(cliente.name)}</span>` : ""}
       ${fecha ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}">${fecha}</span>` : ""}
       ${t.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(t.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${t.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(t.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
@@ -588,7 +606,7 @@ function contentCardEl(c) {
       <select class="tstage" data-stage-select title="Etapa de producción">${ESTADOS.map((e) => `<option ${e === etapa ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
     </div>
     <div class="tcard__row">
-      ${cliente ? `<span class="chip chip--cliente">${escapeHtml(cliente.name)}</span>` : ""}
+      ${cliente ? `<span class="chip chip--cliente">${clientAvatar(cliente, 16)}${escapeHtml(cliente.name)}</span>` : ""}
       ${c.delivery_date ? `<span class="chip chip--fecha ${overdue ? "overdue" : ""}" title="Fecha de entrega">Entrega ${fmtDate(c.delivery_date)}</span>` : ""}
       ${c.drive_url ? `<a class="tcard__drive" data-drive href="${escapeHtml(normalizeUrl(c.drive_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Drive</a>` : ""}
       ${c.reels_url ? `<a class="tcard__drive tcard__reels" data-reels href="${escapeHtml(normalizeUrl(c.reels_url))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 9h16M9 4l2.5 5M14 4l2.5 5"/><path d="m10 13 4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>Reels</a>` : ""}
@@ -735,6 +753,7 @@ function openTaskModal(task, prefill, context) {
       const st = c.status || "Activo";
       return `<option value="${c.id}">${escapeHtml(c.name)}${st !== "Activo" ? ` (${st.toLowerCase()})` : ""}</option>`;
     }).join("");
+  selC.onchange = updateTClientePreview;
 
   // Responsables (desplegable con avatares)
   taskAssignees = (task && Array.isArray(task.assignee_ids)) ? task.assignee_ids.slice() : [];
@@ -754,6 +773,7 @@ function openTaskModal(task, prefill, context) {
   $("#tPrioridad").value = task?.prioridad || "Media";
   $("#tFecha").value     = task?.due_date || "";
   $("#tCliente").value   = task?.client_id || "";
+  updateTClientePreview();
   $("#tDrive").value     = task?.drive_url || "";
   $("#tReels").value     = task?.reels_url || "";
 
@@ -1162,7 +1182,7 @@ function renderClients() {
     const typeShort = (c.client_type || "").replace(" (Podcast)", "");
     el.innerHTML = `
       <div class="ccard__head">
-        <div class="ccard__name">${escapeHtml(c.name)}</div>
+        <div class="ccard__id">${clientAvatar(c, 40)}<div class="ccard__name">${escapeHtml(c.name)}</div></div>
         <span class="status ${stClass}">${escapeHtml(status)}</span>
       </div>
       ${subtitle ? `<div class="ccard__industry">${escapeHtml(subtitle)}</div>` : ""}
@@ -1202,6 +1222,7 @@ function openClientModal(client) {
   $("#btnSaveClientLabel").textContent = "Guardar";
 
   $("#cName").value = client?.name || "";
+  renderClientLogoPreview();
   $("#cEmpresa").value = client?.empresa || "";
   $("#cIndustry").value = client?.industry || "";
   $("#cLabel").value = client?.label || "Cliente";
@@ -2785,4 +2806,75 @@ $("#btnDeletePhase")?.addEventListener("click", async () => {
   if (error) { showMsg("#phaseMsg", "No se pudo eliminar: " + error.message); return; }
   closePhaseModal(); toast("Fase eliminada");
   await loadPhases(); renderPhases();
+});
+
+/* Preview de logo+nombre del cliente en el modal de tarea */
+function updateTClientePreview() {
+  const box = document.getElementById("tClientePreview");
+  if (!box) return;
+  const c = clientById(document.getElementById("tCliente").value);
+  box.innerHTML = c ? clientChip(c, 22) : "";
+}
+
+/* ============================================================
+   LOGO DE CLIENTE (subida a bucket público 'client-logos')
+   ============================================================ */
+const LOGOS_BUCKET = "client-logos";
+
+function renderClientLogoPreview() {
+  const box = document.getElementById("cLogoPreview");
+  if (!box) return;
+  const url = editingClient?.logo_url;
+  box.innerHTML = url
+    ? `<img src="${escapeHtml(url)}" alt="logo" />`
+    : `<span class="logo-preview__initial">${escapeHtml(initials(editingClient?.name || $("#cName")?.value || ""))}</span>`;
+  document.getElementById("cLogoRemove")?.classList.toggle("hidden", !url);
+  const lbl = document.getElementById("cLogoLabel");
+  if (lbl) lbl.textContent = url ? "Cambiar logo" : "Subir logo";
+}
+
+document.getElementById("cLogoInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+  if (!editingClient) { toast("Guarda el cliente primero, luego sube su logo"); return; }
+  if (!file.type.startsWith("image/")) { toast("El logo debe ser una imagen"); return; }
+  if (file.size > 3 * 1024 * 1024) { toast("La imagen es muy grande (máx. 3 MB)"); return; }
+
+  const lbl = document.getElementById("cLogoLabel");
+  const prev = lbl ? lbl.textContent : "";
+  if (lbl) lbl.innerHTML = '<span class="spinner"></span> Subiendo…';
+  try {
+    const ext = (file.name.split(".").pop() || "png").toLowerCase();
+    const path = `${editingClient.id}/logo-${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from(LOGOS_BUCKET).upload(path, file, { upsert: true });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from(LOGOS_BUCKET).getPublicUrl(path);
+    const url = pub.publicUrl;
+    const { error: updErr } = await sb.from("clients").update({ logo_url: url, sync_source: "notion" }).eq("id", editingClient.id);
+    if (updErr) throw updErr;
+    editingClient.logo_url = url;
+    const inMem = CLIENTS.find((c) => c.id === editingClient.id);
+    if (inMem) inMem.logo_url = url;
+    renderClientLogoPreview();
+    renderClients();
+    toast("Logo actualizado");
+  } catch (err) {
+    toast("No se pudo subir el logo: " + (err.message || err));
+  } finally {
+    if (lbl) lbl.textContent = prev || "Subir logo";
+  }
+});
+
+document.getElementById("cLogoRemove")?.addEventListener("click", async () => {
+  if (!editingClient?.logo_url) return;
+  if (!confirm("¿Quitar el logo de este cliente?")) return;
+  const { error } = await sb.from("clients").update({ logo_url: null, sync_source: "notion" }).eq("id", editingClient.id);
+  if (error) { toast("No se pudo quitar"); return; }
+  editingClient.logo_url = null;
+  const inMem = CLIENTS.find((c) => c.id === editingClient.id);
+  if (inMem) inMem.logo_url = null;
+  renderClientLogoPreview();
+  renderClients();
+  toast("Logo quitado");
 });

@@ -452,6 +452,7 @@
             <select class="input" id="tCliente">
               <option value="">— Sin cliente —</option>
             </select>
+            <div class="cli-preview" id="tClientePreview"></div>
           </div>
         </div>
 
@@ -549,6 +550,17 @@
         <div id="clientReadonly" class="msg msg--info hidden">Solo lectura — solo los administradores pueden editar clientes.</div>
 
         <div class="modal-section">Identidad</div>
+        <div class="logo-field">
+          <div class="logo-preview" id="cLogoPreview"></div>
+          <div class="logo-actions">
+            <label class="btn btn--ghost btn--sm file-btn" id="cLogoBtn">
+              <input type="file" id="cLogoInput" accept="image/*" hidden />
+              <span id="cLogoLabel">Subir logo</span>
+            </label>
+            <button class="btn btn--ghost btn--sm hidden" id="cLogoRemove" type="button">Quitar</button>
+            <div class="logo-hint">PNG o JPG, cuadrado de preferencia.</div>
+          </div>
+        </div>
         <div class="field">
           <label for="cName">Nombre</label>
           <input class="input" type="text" id="cName" placeholder="Persona o marca (ej. Grupo Fénix)" />

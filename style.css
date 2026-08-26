@@ -1332,3 +1332,24 @@ textarea.input { resize: vertical; min-height: 70px; }
 /* Grabaciones (eventos) en el calendario compartido */
 .cal__pill--rec { background: var(--amber-a15, rgba(199,120,38,.18)); border-left: 4px solid var(--amber); color: #fff; cursor: pointer; }
 .cal__pill--rec:hover { background: var(--amber-a25, rgba(199,120,38,.28)); }
+
+/* ===== Logos / avatares de cliente ===== */
+.cli-avatar { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); flex-shrink: 0; vertical-align: middle; }
+.cli-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cli-avatar--initial { color: var(--amber-hi); font-family: "Anton", sans-serif; font-weight: 400; letter-spacing: .3px; background: var(--surface-2); }
+.cli-chip { display: inline-flex; align-items: center; gap: 6px; }
+.cli-chip__name { font-size: 13px; }
+.chip--cliente { display: inline-flex; align-items: center; gap: 5px; }
+.cli-preview { margin-top: 6px; min-height: 22px; }
+
+/* Directorio: identidad con logo */
+.ccard__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ccard__id .ccard__name { margin: 0; }
+
+/* Modal cliente: control de logo */
+.logo-field { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; }
+.logo-preview { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.logo-preview__initial { font-family: "Anton", sans-serif; font-size: 26px; color: var(--amber-hi); }
+.logo-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.logo-hint { font-size: 11px; color: var(--text-faint); }
