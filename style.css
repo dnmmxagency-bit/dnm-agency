@@ -358,14 +358,17 @@ textarea.input { resize: vertical; min-height: 70px; }
   border-top: 1px solid var(--border);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
 }
-.bottomnav__row { display: flex; justify-content: space-around; }
+.bottomnav__row { display: flex; justify-content: space-around; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.bottomnav__row::-webkit-scrollbar { display: none; }
 .bottomnav__item {
-  flex: 1;
+  flex: 1 0 auto;
+  min-width: 60px;
   background: none; border: none;
   color: var(--text-faint);
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 6px 2px;
   font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
 }
 .bottomnav__item svg { width: 20px; height: 20px; stroke-width: 1.6; }
@@ -1308,3 +1311,24 @@ textarea.input { resize: vertical; min-height: 70px; }
 /* Calendario compartido: pills por departamento */
 .cal__pill--shared { background: var(--surface-3); color: #fff; border-left: 4px solid var(--text-faint); font-weight: 700; }
 .cal__dep { font-weight: 600; font-size: 9px; color: var(--amber-hi); }
+
+/* ===== Entregables ===== */
+.deliv-card { border: 1px solid var(--border); background: var(--surface); padding: 16px 18px; margin-bottom: 14px; }
+.deliv-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.deliv-card__name { font-family: "Anton", sans-serif; font-size: 18px; letter-spacing: .3px; }
+.deliv-card__meta { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
+.deliv-card__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.deliv-bar { height: 10px; background: var(--surface-3); border: 1px solid var(--border); margin-top: 12px; overflow: hidden; }
+.deliv-bar__fill { height: 100%; background: var(--amber); transition: width .3s ease; }
+.deliv-bar__label { font-size: 11px; color: var(--amber-hi); font-weight: 700; margin-top: 4px; }
+.deliv-pieces { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.deliv-piece { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; }
+.deliv-piece:hover { border-color: var(--amber-a50); }
+.deliv-piece.is-done { opacity: .6; }
+.deliv-piece.is-done .deliv-piece__name { text-decoration: line-through; }
+.deliv-piece__name { font-size: 13px; }
+.deliv-empty, .empty-state { color: var(--text-faint); font-size: 13px; padding: 10px 2px; }
+
+/* Grabaciones (eventos) en el calendario compartido */
+.cal__pill--rec { background: var(--amber-a15, rgba(199,120,38,.18)); border-left: 4px solid var(--amber); color: #fff; cursor: pointer; }
+.cal__pill--rec:hover { background: var(--amber-a25, rgba(199,120,38,.28)); }

@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v53";
+const APP_VERSION = "v56";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -248,6 +248,7 @@ function switchView(view) {
   }
   if (view === "historial") renderHistorial();
   if (view === "contenido") { renderContent(); renderGuests(); }
+  if (view === "entregables") { renderDeliverables(); }
   if (view === "usuarios") {
     if (!isAdmin()) { switchView("tablero"); return; }
     renderUsuarios();
@@ -309,11 +310,14 @@ const CONTENT_DONE_STAGES = ["Programado para publicar", "Publicado"];
 // Estatus de avance de la tarea (columnas del Tablero)
 const TASK_STATUS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"];
 const TASK_DONE = ["Terminado", "Cancelado"];
+// Estatus de PIEZAS de contenido: incluye "Entregado" (sale del tablero, pero sigue en el entregable)
+const CONTENT_STATUS = ["Por hacer", "En curso", "En revisión", "Entregado", "Terminado", "Cancelado"];
+const CONTENT_ARCHIVE = ["Entregado", "Terminado", "Cancelado"]; // salen del tablero y del calendario de grabación activo
 const ACTIVE_STATUS = ["Por hacer", "En curso", "En revisión"]; // columnas del tablero (lo cerrado va al Historial)
 const BOARD_COLUMNS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"]; // Terminado/Cancelado se ven pero archivan al instante
 const BOARD_ARCHIVE_COLS = ["Terminado", "Cancelado"]; // apartados de archivo: no muestran tarjetas
 function closedAtFor(newStatus, prevClosedAt) {
-  if (TASK_DONE.includes(newStatus)) return prevClosedAt || new Date().toISOString();
+  if (TASK_DONE.includes(newStatus) || newStatus === "Entregado") return prevClosedAt || new Date().toISOString();
   return null;
 }
 function statusPct(st) {
@@ -354,7 +358,7 @@ let taskAssignees = []; // responsables seleccionados (chips)
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
-  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent()]);
+  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent(), loadDeliverables(), loadRecordings()]);
   await loadTasks();
 }
 
@@ -423,7 +427,7 @@ function renderBoard() {
   const sourceAll = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
   const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
-  const pieces = piecesAll.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
+  const pieces = piecesAll.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus));
   const total = source.length + pieces.length;
   $("#taskCount").textContent = `${total} ${total === 1 ? "actividad" : "actividades"}`;
 
@@ -656,7 +660,10 @@ async function updateTaskEstado(task, estado) {
     .update({ estado, closed_at, updated_at: new Date().toISOString() })
     .eq("id", task.id);
   if (error) { task.estado = prev; task.closed_at = prevClosed; renderBoard(); toast("No se pudo mover la tarea"); }
-  else if (TASK_DONE.includes(estado)) toast("Tarea cerrada y archivada en el Historial");
+  else if (TASK_DONE.includes(estado)) {
+    toast("Tarea cerrada y archivada en el Historial");
+    if (task.recording_id) archiveRecording(task.recording_id);
+  }
 }
 
 async function updateTaskProceso(task, proceso) {
@@ -747,6 +754,13 @@ function openTaskModal(task, prefill, context) {
     CONTENT.map((c) => `<option value="${c.id}">${c.chapter != null ? "#" + c.chapter + " · " : ""}${escapeHtml(c.title)}</option>`).join("");
   selCo.value = task?.content_id || (prefill && prefill.content_id) || "";
 
+  // Grabación vinculada (solo activas + la ya vinculada si estuviera archivada)
+  const selRec = $("#tRecording");
+  const recs = (typeof RECORDINGS !== "undefined" ? RECORDINGS : []).filter((r) => r.status !== "Archivada" || r.id === task?.recording_id);
+  selRec.innerHTML = '<option value="">— Ninguna —</option>' +
+    recs.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}${r.date ? " · " + fmtDate(r.date) : ""}</option>`).join("");
+  selRec.value = task?.recording_id || (prefill && prefill.recording_id) || "";
+
   // Notas / correcciones (copia de trabajo)
   taskNotes = Array.isArray(task?.notes) ? JSON.parse(JSON.stringify(task.notes)) : [];
   taskCorrections = Array.isArray(task?.corrections) ? JSON.parse(JSON.stringify(task.corrections)) : [];
@@ -800,6 +814,7 @@ $("#btnSaveTask").onclick = async () => {
     drive_url: normalizeUrl($("#tDrive").value),
     reels_url: normalizeUrl($("#tReels").value),
     content_id: $("#tContent").value || null,
+    recording_id: $("#tRecording").value || null,
     assignee_ids,
     notes: taskNotes,
     corrections: taskCorrections,
@@ -823,6 +838,11 @@ $("#btnSaveTask").onclick = async () => {
   $("#btnSaveLabel").textContent = "Guardar";
 
   if (error) { showTaskMsg("No se pudo guardar: " + error.message); return; }
+  // Si la tarea se cerró y tiene grabación vinculada, archivar esa grabación
+  const recId = $("#tRecording").value || null;
+  if (recId && TASK_DONE.includes($("#tEstado").value)) {
+    await archiveRecording(recId);
+  }
   closeTaskModal();
   toast(editingTask ? "Tarea actualizada" : "Tarea creada");
   await loadTasks();
@@ -878,25 +898,22 @@ function createCalendar(mountId, opts) {
   function eventsByDay() {
     const map = {};
     if (opts.shared) {
-      const seen = new Set();
+      // Grabaciones propias de DNM (eventos), activas
+      (typeof RECORDINGS !== "undefined" ? RECORDINGS : []).forEach((r) => {
+        if (!r.date || r.status === "Archivada") return;
+        (map[r.date] = map[r.date] || []).push({
+          kind: "shared", id: r.id, recording: true,
+          title: r.name || "Grabación", department: "DNM", estado: null,
+        });
+      });
+      // Espejo de Notion (otros departamentos), por fecha de grabación
       (typeof SHARED !== "undefined" ? SHARED : []).forEach((c) => {
-        const day = c.record_date; // exclusivo para grabaciones
+        const day = c.record_date;
         if (!day) return;
-        if (c.notion_id) seen.add(c.notion_id);
         (map[day] = map[day] || []).push({
           kind: "shared", id: c.notion_id,
           title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
           department: c.department || null, estado: c.estado || null,
-        });
-      });
-      // contenido de DNM creado en la app (aparece al instante, antes del espejo)
-      (typeof CONTENT !== "undefined" ? CONTENT : []).forEach((c) => {
-        if (!c.record_date) return;
-        if (c.notion_id && seen.has(c.notion_id)) return; // ya viene del espejo
-        (map[c.record_date] = map[c.record_date] || []).push({
-          kind: "shared", id: c.id,
-          title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
-          department: "DNM", estado: c.estado || null,
         });
       });
       return map;
@@ -976,7 +993,8 @@ function createCalendar(mountId, opts) {
       let pills = list.slice(0, maxPills).map((ev) => {
         if (ev.kind === "shared") {
           const dep = ev.department ? ` · ${ev.department}` : "";
-          return `<div class="cal__pill cal__pill--shared" data-kind="shared" title="${escapeHtml(ev.title + dep)}">${escapeHtml(ev.title)}${ev.department ? ` <span class="cal__dep">${escapeHtml(ev.department)}</span>` : ""}</div>`;
+          const icon = ev.recording ? "🎥 " : "";
+          return `<div class="cal__pill cal__pill--shared${ev.recording ? " cal__pill--rec" : ""}" data-kind="shared" data-id="${ev.id}" title="${escapeHtml(ev.title + dep)}">${icon}${escapeHtml(ev.title)}${ev.department ? ` <span class="cal__dep">${escapeHtml(ev.department)}</span>` : ""}</div>`;
         }
         if (ev.kind === "content") {
           return `<div class="cal__pill cal__pill--content" data-kind="content" data-id="${ev.id}" title="Entrega: ${escapeHtml(ev.title)}">🎬 ${escapeHtml(ev.title)}</div>`;
@@ -1020,9 +1038,17 @@ function createCalendar(mountId, opts) {
 
     // click en una tarjeta -> editar (tarea o pieza). En 'shared' es solo lectura.
     if (opts.shared) {
-      // tocar un día crea una pieza de DNM con esa fecha de grabación
+      // pills: editar grabación propia (las de DNM); las del espejo (Notion) son solo lectura
+      mount.querySelectorAll('.cal__pill[data-kind="shared"]').forEach((p) => {
+        p.onclick = (e) => {
+          e.stopPropagation();
+          const r = (typeof RECORDINGS !== "undefined" ? RECORDINGS : []).find((x) => x.id === p.dataset.id);
+          if (r) openRecordingModal(r);
+        };
+      });
+      // tocar un día crea una grabación (evento) con esa fecha
       mount.querySelectorAll(".cal__cell").forEach((c) => {
-        c.onclick = () => openContentModal(null, { record_date: c.dataset.day, estado: "Grabación" });
+        c.onclick = () => openRecordingModal(null, { date: c.dataset.day });
       });
     } else {
       mount.querySelectorAll(".cal__pill").forEach((p) => {
@@ -1548,7 +1574,7 @@ function renderContent() {
   const box = $("#contentList");
   let list = CONTENT;
   if (contentFilterEstado) list = list.filter((c) => c.estado === contentFilterEstado);
-  else list = list.filter((c) => !TASK_DONE.includes(TASK_STATUS.includes(c.estatus) ? c.estatus : "Por hacer"));
+  else list = list.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus));
   if (contentClientFilter) list = list.filter((c) => c.client_id === contentClientFilter);
   if (contentMine) list = list.filter((c) => (Array.isArray(c.assignee_ids) ? c.assignee_ids : []).includes(currentProfile?.id));
 
@@ -1615,7 +1641,7 @@ function openContentModal(item, prefill) {
   selE.value = item?.estado || (prefill && prefill.estado) || "Agendado en calendario";
   // estatus (aparece en el Tablero)
   const selSt = $("#coEstatus");
-  selSt.innerHTML = TASK_STATUS.map((s) => `<option>${s}</option>`).join("");
+  selSt.innerHTML = CONTENT_STATUS.map((s) => `<option>${s}</option>`).join("");
   selSt.value = (item && TASK_STATUS.includes(item.estatus)) ? item.estatus : "Por hacer";
 
   // cliente
@@ -1623,6 +1649,13 @@ function openContentModal(item, prefill) {
   selC.innerHTML = '<option value="">— Sin cliente —</option>' +
     CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   selC.value = item?.client_id || "";
+
+  // entregable
+  const selD = $("#coDeliverable");
+  selD.innerHTML = '<option value="">— Sin entregable —</option>' +
+    (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).filter((d) => d.status !== "Archivado")
+      .map((d) => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+  selD.value = item?.deliverable_id || "";
 
   // invitados (desplegable)
   coGuestsSel = (item && Array.isArray(item.guest_ids)) ? item.guest_ids.slice() : [];
@@ -1679,6 +1712,7 @@ $("#btnSaveContent").onclick = async () => {
     release_date: $("#coRelease").value || null,
     delivery_date: $("#coDelivery").value || null,
     client_id: $("#coClient").value || null,
+    deliverable_id: $("#coDeliverable").value || null,
     guest_ids,
     assignee_ids,
     cover_url: normalizeUrl($("#coCover").value),
@@ -1698,6 +1732,7 @@ $("#btnSaveContent").onclick = async () => {
   closeContentModal(); toast(editingContent ? "Pieza actualizada" : "Pieza creada");
   await loadContent(); renderContent(); renderBoard();
   if (calShared) calShared.render();
+  if (typeof renderDeliverables === "function") renderDeliverables();
 };
 
 $("#btnDeleteContent").onclick = async () => {
@@ -2339,3 +2374,234 @@ async function loadShared() {
 }
 
 document.getElementById("btnRefreshShared")?.addEventListener("click", loadShared);
+
+/* ============================================================
+   ENTREGABLES (objetivos de piezas por entregar)
+   ============================================================ */
+let DELIVERABLES = [];
+let showArchivedDeliv = false;
+
+async function loadDeliverables() {
+  try {
+    const { data, error } = await sb.from("deliverables").select("*").order("created_at", { ascending: false });
+    DELIVERABLES = error ? [] : (data || []);
+  } catch (e) { DELIVERABLES = []; }
+}
+
+function deliverablePieces(id) {
+  return (typeof CONTENT !== "undefined" ? CONTENT : []).filter((c) => c.deliverable_id === id);
+}
+function deliverableProgress(d) {
+  const pieces = deliverablePieces(d.id);
+  const done = pieces.filter((c) => c.estatus === "Entregado").length;
+  const meta = Math.max(1, d.meta || 1);
+  return { done, meta, pct: Math.min(100, Math.round((done / meta) * 100)) };
+}
+
+function renderDeliverables() {
+  const box = $("#deliverablesList");
+  if (!box) return;
+  let list = DELIVERABLES.filter((d) => showArchivedDeliv ? d.status === "Archivado" : d.status !== "Archivado");
+  $("#deliverablesCount").textContent = `${list.length}`;
+  $("#btnToggleArchivedDeliv").textContent = showArchivedDeliv ? "Ver activos" : "Ver archivados";
+
+  if (!list.length) {
+    box.innerHTML = `<div class="empty-state">${showArchivedDeliv ? "No hay entregables archivados." : "Aún no hay entregables. Crea uno con “+ Nuevo entregable”."}</div>`;
+    return;
+  }
+
+  box.innerHTML = list.map((d) => {
+    const cli = CLIENTS.find((c) => c.id === d.client_id);
+    const { done, meta, pct } = deliverableProgress(d);
+    const pieces = deliverablePieces(d.id);
+    const piezasHtml = pieces.length
+      ? pieces.map((p) => {
+          const st = p.estatus || "Por hacer";
+          const isDone = p.estatus === "Entregado";
+          return `<div class="deliv-piece ${isDone ? "is-done" : ""}" data-piece="${p.id}">
+            <span class="deliv-piece__name">${p.chapter != null ? "#" + p.chapter + " " : ""}${escapeHtml(p.title || "Pieza")}</span>
+            <span class="deliv-piece__st chip">${escapeHtml(st)}</span>
+          </div>`;
+        }).join("")
+      : `<div class="deliv-empty">Sin piezas aún. Créalas en Contenido y asígnalas a este entregable.</div>`;
+
+    return `<div class="deliv-card" data-deliv="${d.id}">
+      <div class="deliv-card__head">
+        <div>
+          <div class="deliv-card__name">${escapeHtml(d.name)}</div>
+          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}${done}/${meta} entregadas</div>
+        </div>
+        <div class="deliv-card__actions">
+          <button class="btn btn--ghost btn--sm" data-edit-deliv="${d.id}" type="button">Editar</button>
+          ${d.status === "Archivado"
+            ? `<button class="btn btn--ghost btn--sm" data-unarchive-deliv="${d.id}" type="button">Reactivar</button>`
+            : `<button class="btn btn--ghost btn--sm" data-archive-deliv="${d.id}" type="button">Archivar</button>`}
+        </div>
+      </div>
+      <div class="deliv-bar"><div class="deliv-bar__fill" style="width:${pct}%"></div></div>
+      <div class="deliv-bar__label">${pct}%</div>
+      <div class="deliv-pieces">${piezasHtml}</div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-edit-deliv]").forEach((b) => b.onclick = () => {
+    const d = DELIVERABLES.find((x) => x.id === b.dataset.editDeliv); if (d) openDeliverableModal(d);
+  });
+  box.querySelectorAll("[data-archive-deliv]").forEach((b) => b.onclick = () => setDeliverableStatus(b.dataset.archiveDeliv, "Archivado"));
+  box.querySelectorAll("[data-unarchive-deliv]").forEach((b) => b.onclick = () => setDeliverableStatus(b.dataset.unarchiveDeliv, "Activo"));
+  box.querySelectorAll(".deliv-piece").forEach((el) => el.onclick = () => {
+    const p = CONTENT.find((x) => x.id === el.dataset.piece); if (p) openContentModal(p);
+  });
+}
+
+async function setDeliverableStatus(id, status) {
+  const patch = { status, closed_at: status === "Archivado" ? new Date().toISOString() : null, updated_at: new Date().toISOString() };
+  const { error } = await sb.from("deliverables").update(patch).eq("id", id);
+  if (error) { toast("No se pudo actualizar"); return; }
+  if (status === "Archivado" && typeof archiveRecordingsByDeliverable === "function") {
+    await archiveRecordingsByDeliverable(id);
+  }
+  await loadDeliverables(); renderDeliverables();
+  toast(status === "Archivado" ? "Entregable archivado" : "Entregable reactivado");
+}
+
+let editingDeliverable = null;
+const deliverableOverlay = $("#deliverableOverlay");
+
+function openDeliverableModal(item) {
+  editingDeliverable = item || null;
+  $("#deliverableMsg").classList.add("hidden");
+  $("#deliverableModalTitle").textContent = item ? "Editar entregable" : "Nuevo entregable";
+  const selC = $("#dClient");
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  selC.value = item?.client_id || "";
+  $("#dName").value = item?.name || "";
+  $("#dMeta").value = item?.meta ?? 5;
+  $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
+  deliverableOverlay.classList.add("open");
+  setTimeout(() => $("#dName").focus(), 50);
+}
+function closeDeliverableModal() { deliverableOverlay.classList.remove("open"); editingDeliverable = null; }
+
+$("#btnNewDeliverable")?.addEventListener("click", () => openDeliverableModal(null));
+$("#btnToggleArchivedDeliv")?.addEventListener("click", () => { showArchivedDeliv = !showArchivedDeliv; renderDeliverables(); });
+$("#deliverableModalClose")?.addEventListener("click", closeDeliverableModal);
+$("#btnCancelDeliverable")?.addEventListener("click", closeDeliverableModal);
+deliverableOverlay?.addEventListener("click", (e) => { if (e.target === deliverableOverlay) closeDeliverableModal(); });
+
+$("#btnSaveDeliverable")?.addEventListener("click", async () => {
+  const name = $("#dName").value.trim();
+  if (!name) { showMsg("#deliverableMsg", "Escribe un nombre."); return; }
+  const payload = {
+    name,
+    client_id: $("#dClient").value || null,
+    meta: Math.max(1, parseInt($("#dMeta").value || "1", 10)),
+    updated_at: new Date().toISOString(),
+  };
+  const btn = $("#btnSaveDeliverable"); btn.disabled = true; $("#btnSaveDeliverableLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingDeliverable) ({ error } = await sb.from("deliverables").update(payload).eq("id", editingDeliverable.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("deliverables").insert(payload)); }
+  btn.disabled = false; $("#btnSaveDeliverableLabel").textContent = "Guardar";
+  if (error) { showMsg("#deliverableMsg", "No se pudo guardar: " + error.message); return; }
+  closeDeliverableModal(); toast(editingDeliverable ? "Entregable actualizado" : "Entregable creado");
+  await loadDeliverables(); renderDeliverables();
+});
+
+$("#btnDeleteDeliverable")?.addEventListener("click", async () => {
+  if (!editingDeliverable) return;
+  const { error } = await sb.from("deliverables").delete().eq("id", editingDeliverable.id);
+  if (error) { showMsg("#deliverableMsg", "No se pudo eliminar: " + error.message); return; }
+  closeDeliverableModal(); toast("Entregable eliminado");
+  await loadDeliverables(); renderDeliverables();
+});
+
+/* ============================================================
+   GRABACIONES (eventos de referencia, se vinculan en tareas)
+   ============================================================ */
+let RECORDINGS = [];
+
+async function loadRecordings() {
+  try {
+    const { data, error } = await sb.from("recordings").select("*").order("date", { ascending: true });
+    RECORDINGS = error ? [] : (data || []);
+  } catch (e) { RECORDINGS = []; }
+}
+
+let editingRecording = null;
+const recordingOverlay = $("#recordingOverlay");
+
+function openRecordingModal(item, prefill) {
+  editingRecording = item || null;
+  $("#recordingMsg").classList.add("hidden");
+  $("#recordingModalTitle").textContent = item ? "Editar grabación" : "Nueva grabación";
+  const selC = $("#rClient");
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  selC.value = item?.client_id || "";
+  const selD = $("#rDeliverable");
+  selD.innerHTML = '<option value="">— Sin entregable —</option>' +
+    (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).filter((d) => d.status !== "Archivado")
+      .map((d) => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+  selD.value = item?.deliverable_id || "";
+  $("#rName").value = item?.name || "";
+  $("#rDate").value = item?.date || (prefill && prefill.date) || "";
+  $("#btnDeleteRecording").classList.toggle("hidden", !item);
+  $("#btnArchiveRecording").classList.toggle("hidden", !item || item.status === "Archivada");
+  recordingOverlay.classList.add("open");
+  setTimeout(() => $("#rName").focus(), 50);
+}
+function closeRecordingModal() { recordingOverlay.classList.remove("open"); editingRecording = null; }
+
+$("#recordingModalClose")?.addEventListener("click", closeRecordingModal);
+$("#btnCancelRecording")?.addEventListener("click", closeRecordingModal);
+recordingOverlay?.addEventListener("click", (e) => { if (e.target === recordingOverlay) closeRecordingModal(); });
+
+$("#btnSaveRecording")?.addEventListener("click", async () => {
+  const name = $("#rName").value.trim();
+  const date = $("#rDate").value;
+  if (!name) { showMsg("#recordingMsg", "Escribe un nombre."); return; }
+  if (!date) { showMsg("#recordingMsg", "Elige una fecha."); return; }
+  const payload = {
+    name, date,
+    client_id: $("#rClient").value || null,
+    deliverable_id: $("#rDeliverable").value || null,
+    updated_at: new Date().toISOString(),
+  };
+  const btn = $("#btnSaveRecording"); btn.disabled = true; $("#btnSaveRecordingLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingRecording) ({ error } = await sb.from("recordings").update(payload).eq("id", editingRecording.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("recordings").insert(payload)); }
+  btn.disabled = false; $("#btnSaveRecordingLabel").textContent = "Guardar";
+  if (error) { showMsg("#recordingMsg", "No se pudo guardar: " + error.message); return; }
+  closeRecordingModal(); toast(editingRecording ? "Grabación actualizada" : "Grabación creada");
+  await loadRecordings(); if (calShared) calShared.render();
+});
+
+$("#btnArchiveRecording")?.addEventListener("click", async () => {
+  if (!editingRecording) return;
+  await archiveRecording(editingRecording.id);
+  closeRecordingModal();
+});
+
+$("#btnDeleteRecording")?.addEventListener("click", async () => {
+  if (!editingRecording) return;
+  const { error } = await sb.from("recordings").delete().eq("id", editingRecording.id);
+  if (error) { showMsg("#recordingMsg", "No se pudo eliminar: " + error.message); return; }
+  closeRecordingModal(); toast("Grabación eliminada");
+  await loadRecordings(); if (calShared) calShared.render();
+});
+
+async function archiveRecording(id) {
+  const { error } = await sb.from("recordings")
+    .update({ status: "Archivada", closed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (!error) { await loadRecordings(); if (calShared) calShared.render(); toast("Grabación archivada"); }
+}
+
+// Archivar grabaciones ligadas a un entregable (cuando el entregable se archiva)
+async function archiveRecordingsByDeliverable(deliverableId) {
+  const ligadas = RECORDINGS.filter((r) => r.deliverable_id === deliverableId && r.status !== "Archivada");
+  for (const r of ligadas) await archiveRecording(r.id);
+}

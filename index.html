@@ -137,6 +137,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M7 8l4 2.5L7 13z" fill="currentColor" stroke="none"/></svg>
           Contenido
         </button>
+        <button class="nav__item" data-view="entregables" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
+          Entregables
+        </button>
         <button class="nav__item" data-view="compartido" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>
           Grabación compartida
@@ -253,12 +257,28 @@
           <div class="cal" id="cal-grabacion"></div>
         </section>
 
+        <!-- VISTA: Entregables -->
+        <section class="view" id="view-entregables">
+          <div class="page-head">
+            <div class="eyebrow">Producción</div>
+            <h2 class="page-title">Entregables</h2>
+            <p class="page-desc">Objetivos de piezas por entregar (ej. "5 Reels"). Cada pieza se trabaja en el Tablero; al marcarla "Entregado" sale del Tablero pero sigue aquí y suma al progreso.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn--primary" id="btnNewDeliverable" type="button">+ Nuevo entregable</button>
+            <button class="btn btn--ghost btn--sm" id="btnToggleArchivedDeliv" type="button">Ver archivados</button>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="deliverablesCount">0</span>
+          </div>
+          <div id="deliverablesList"></div>
+        </section>
+
         <!-- VISTA: Calendario compartido (espejo de Notion, solo lectura) -->
         <section class="view" id="view-compartido">
           <div class="page-head">
             <div class="eyebrow">Producción</div>
             <h2 class="page-title">Calendario de grabación compartido</h2>
-            <p class="page-desc">Solo grabaciones de TODA la organización (DNM, Inspirar y demás), por fecha de grabación. Solo lectura. Se actualiza solo.</p>
+            <p class="page-desc">Grabaciones de toda la organización (DNM, Inspirar y demás). Toca un día para crear una grabación de DNM; luego vincúlala en una tarea. Al terminar la tarea o archivar el entregable, la grabación se archiva.</p>
           </div>
           <div class="toolbar">
             <button class="btn btn--ghost btn--sm" id="btnRefreshShared" type="button">Refrescar</button>
@@ -347,6 +367,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
           Contenido
         </button>
+        <button class="bottomnav__item" data-view="entregables" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
+          Entregables
+        </button>
         <button class="bottomnav__item" data-view="clientes" data-admin-only type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           Clientes
@@ -419,6 +443,11 @@
         <div class="field">
           <label for="tContent">Episodio / pieza ligada</label>
           <select class="input" id="tContent"><option value="">— Ninguna —</option></select>
+        </div>
+
+        <div class="field">
+          <label for="tRecording">Grabación vinculada</label>
+          <select class="input" id="tRecording"><option value="">— Ninguna —</option></select>
         </div>
 
         <div class="field">
@@ -690,6 +719,10 @@
           <select class="input" id="coClient"><option value="">— Sin cliente —</option></select>
         </div>
         <div class="field">
+          <label for="coDeliverable">Entregable</label>
+          <select class="input" id="coDeliverable"><option value="">— Sin entregable —</option></select>
+        </div>
+        <div class="field">
           <label>Invitados</label>
           <div class="people" id="coGuests"></div>
         </div>
@@ -782,6 +815,77 @@
         <div class="toolbar__spacer"></div>
         <button class="btn btn--ghost" id="btnCancelBrief" type="button">Cerrar</button>
         <button class="btn btn--primary" id="btnSaveBrief" type="button"><span id="btnSaveBriefLabel">Guardar brief</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Entregable -->
+  <div class="overlay" id="deliverableOverlay">
+    <div class="modal modal--sm">
+      <div class="modal__head">
+        <h3 class="modal__title" id="deliverableModalTitle">Nuevo entregable</h3>
+        <button class="modal__x" id="deliverableModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="deliverableMsg" class="msg msg--error hidden"></div>
+        <div class="field">
+          <label for="dName">Nombre del entregable</label>
+          <input class="input" id="dName" placeholder="Ej. 5 Reels — Septiembre" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="dClient">Cliente</label>
+            <select class="input" id="dClient"><option value="">— Sin cliente —</option></select>
+          </div>
+          <div class="field">
+            <label for="dMeta">Meta (nº de piezas)</label>
+            <input class="input" type="number" id="dMeta" min="1" value="5" />
+          </div>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelDeliverable" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveDeliverable" type="button"><span id="btnSaveDeliverableLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Grabación -->
+  <div class="overlay" id="recordingOverlay">
+    <div class="modal modal--sm">
+      <div class="modal__head">
+        <h3 class="modal__title" id="recordingModalTitle">Nueva grabación</h3>
+        <button class="modal__x" id="recordingModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="recordingMsg" class="msg msg--error hidden"></div>
+        <div class="field">
+          <label for="rName">Nombre de la grabación</label>
+          <input class="input" id="rName" placeholder="Ej. Sesión LG&G — Reels" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="rDate">Fecha</label>
+            <input class="input" type="date" id="rDate" />
+          </div>
+          <div class="field">
+            <label for="rClient">Cliente</label>
+            <select class="input" id="rClient"><option value="">— Sin cliente —</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="rDeliverable">Entregable (opcional)</label>
+          <select class="input" id="rDeliverable"><option value="">— Sin entregable —</option></select>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger hidden" id="btnDeleteRecording" type="button">Eliminar</button>
+        <button class="btn btn--ghost btn--sm hidden" id="btnArchiveRecording" type="button">Archivar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelRecording" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSaveRecording" type="button"><span id="btnSaveRecordingLabel">Guardar</span></button>
       </div>
     </div>
   </div>
