@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v50";
+const APP_VERSION = "v52";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -879,7 +879,7 @@ function createCalendar(mountId, opts) {
     const map = {};
     if (opts.shared) {
       (typeof SHARED !== "undefined" ? SHARED : []).forEach((c) => {
-        const day = c.release_date || c.record_date;
+        const day = c.record_date; // exclusivo para grabaciones
         if (!day) return;
         (map[day] = map[day] || []).push({
           kind: "shared", id: c.notion_id,
