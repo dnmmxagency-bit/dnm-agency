@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v64";
+const APP_VERSION = "v65";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1592,6 +1592,11 @@ async function loadGuests() {
 async function loadContent() {
   const { data, error } = await sb.from("content_items").select("*").order("created_at", { ascending: false });
   CONTENT = error ? [] : (data || []);
+  // Privacidad: los miembros solo ven sus piezas (creadas por ellos o donde son editores)
+  if (!isAdmin()) {
+    const me = currentProfile?.id;
+    CONTENT = CONTENT.filter((c) => c.owner_id === me || (Array.isArray(c.assignee_ids) && c.assignee_ids.includes(me)));
+  }
 }
 
 function guestName(id) {
