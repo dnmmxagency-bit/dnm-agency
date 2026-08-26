@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v57";
+const APP_VERSION = "v58";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2438,7 +2438,7 @@ function renderDeliverables() {
       <div class="deliv-card__head">
         <div>
           <div class="deliv-card__name">${escapeHtml(d.name)}</div>
-          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}${done}/${meta} entregadas</div>
+          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(d.estado || "Por iniciar")}</span> · ${done}/${meta} entregadas${d.delivery_date ? " · entrega " + fmtDate(d.delivery_date) : ""}</div>
         </div>
         <div class="deliv-card__actions">
           <button class="btn btn--ghost btn--sm" data-edit-deliv="${d.id}" type="button">Editar</button>
@@ -2492,6 +2492,12 @@ function openDeliverableModal(item) {
     (typeof PHASES !== "undefined" ? PHASES : []).filter((p) => p.status !== "Archivada")
       .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
   selP.value = item?.phase_id || "";
+
+  const selEst = $("#dEstado");
+  selEst.innerHTML = PHASE_PIPELINE.map((s) => `<option>${s}</option>`).join("");
+  selEst.value = item?.estado || "Por iniciar";
+  $("#dDelivery").value = item?.delivery_date || "";
+  $("#dRecord").value = item?.record_date || "";
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -2512,6 +2518,9 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     client_id: $("#dClient").value || null,
     meta: Math.max(1, parseInt($("#dMeta").value || "1", 10)),
     phase_id: $("#dPhase").value || null,
+    estado: $("#dEstado").value,
+    delivery_date: $("#dDelivery").value || null,
+    record_date: $("#dRecord").value || null,
     updated_at: new Date().toISOString(),
   };
   const btn = $("#btnSaveDeliverable"); btn.disabled = true; $("#btnSaveDeliverableLabel").innerHTML = '<span class="spinner"></span>';
