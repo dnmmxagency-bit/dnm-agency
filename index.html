@@ -137,6 +137,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M7 8l4 2.5L7 13z" fill="currentColor" stroke="none"/></svg>
           Contenido
         </button>
+        <button class="nav__item" data-view="fases" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>
+          Fases
+        </button>
         <button class="nav__item" data-view="entregables" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
           Entregables
@@ -257,6 +261,23 @@
           <div class="cal" id="cal-grabacion"></div>
         </section>
 
+        <!-- VISTA: Fases -->
+        <section class="view" id="view-fases">
+          <div class="page-head">
+            <div class="eyebrow">Producción</div>
+            <h2 class="page-title">Fases</h2>
+            <p class="page-desc">Etapas de cada cliente. Una Fase agrupa sus Entregables. Jerarquía: Cliente → Fase → Entregable → Piezas.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn--primary" id="btnNewPhase" type="button">+ Nueva fase</button>
+            <select class="input input--sm" id="phaseClientFilter"><option value="">Todos los clientes</option></select>
+            <button class="btn btn--ghost btn--sm" id="btnToggleArchivedPhase" type="button">Ver archivadas</button>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="phasesCount">0</span>
+          </div>
+          <div id="phasesList"></div>
+        </section>
+
         <!-- VISTA: Entregables -->
         <section class="view" id="view-entregables">
           <div class="page-head">
@@ -366,6 +387,10 @@
         <button class="bottomnav__item" data-view="contenido" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
           Contenido
+        </button>
+        <button class="bottomnav__item" data-view="fases" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>
+          Fases
         </button>
         <button class="bottomnav__item" data-view="entregables" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
@@ -842,12 +867,60 @@
             <input class="input" type="number" id="dMeta" min="1" value="5" />
           </div>
         </div>
+        <div class="field">
+          <label for="dPhase">Fase</label>
+          <select class="input" id="dPhase"><option value="">— Sin fase —</option></select>
+        </div>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>
         <div class="toolbar__spacer"></div>
         <button class="btn btn--ghost" id="btnCancelDeliverable" type="button">Cancelar</button>
         <button class="btn btn--primary" id="btnSaveDeliverable" type="button"><span id="btnSaveDeliverableLabel">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Fase -->
+  <div class="overlay" id="phaseOverlay">
+    <div class="modal modal--sm">
+      <div class="modal__head">
+        <h3 class="modal__title" id="phaseModalTitle">Nueva fase</h3>
+        <button class="modal__x" id="phaseModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div id="phaseMsg" class="msg msg--error hidden"></div>
+        <div class="field">
+          <label for="phName">Nombre de la fase</label>
+          <input class="input" id="phName" placeholder="Ej. Lanzamiento — Septiembre" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="phClient">Cliente</label>
+            <select class="input" id="phClient"><option value="">— Sin cliente —</option></select>
+          </div>
+          <div class="field">
+            <label for="phEstado">Estado</label>
+            <select class="input" id="phEstado"></select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="phStart">Inicio</label>
+            <input class="input" type="date" id="phStart" />
+          </div>
+          <div class="field">
+            <label for="phEnd">Fin</label>
+            <input class="input" type="date" id="phEnd" />
+          </div>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger hidden" id="btnDeletePhase" type="button">Eliminar</button>
+        <button class="btn btn--ghost btn--sm hidden" id="btnArchivePhase" type="button">Archivar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="btnCancelPhase" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnSavePhase" type="button"><span id="btnSavePhaseLabel">Guardar</span></button>
       </div>
     </div>
   </div>

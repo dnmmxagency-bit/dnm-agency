@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v56";
+const APP_VERSION = "v57";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -249,6 +249,7 @@ function switchView(view) {
   if (view === "historial") renderHistorial();
   if (view === "contenido") { renderContent(); renderGuests(); }
   if (view === "entregables") { renderDeliverables(); }
+  if (view === "fases") { renderPhases(); }
   if (view === "usuarios") {
     if (!isAdmin()) { switchView("tablero"); return; }
     renderUsuarios();
@@ -314,6 +315,14 @@ const TASK_DONE = ["Terminado", "Cancelado"];
 const CONTENT_STATUS = ["Por hacer", "En curso", "En revisión", "Entregado", "Terminado", "Cancelado"];
 const CONTENT_ARCHIVE = ["Entregado", "Terminado", "Cancelado"]; // salen del tablero y del calendario de grabación activo
 const ACTIVE_STATUS = ["Por hacer", "En curso", "En revisión"]; // columnas del tablero (lo cerrado va al Historial)
+
+// Pipeline de producción de Fases y Entregables (igual que en Notion)
+const PHASE_PIPELINE = [
+  "Por iniciar", "Idea / Conceptualización / escaleta de contenido", "En curso",
+  "Ready to shot / grabación", "Edición", "Revisión", "Revisión cliente",
+  "Correcciones", "Terminado", "Listo para publicar", "Publicado", "Cancelado",
+];
+const PHASE_DONE = ["Terminado", "Listo para publicar", "Publicado", "Cancelado"];
 const BOARD_COLUMNS = ["Por hacer", "En curso", "En revisión", "Terminado", "Cancelado"]; // Terminado/Cancelado se ven pero archivan al instante
 const BOARD_ARCHIVE_COLS = ["Terminado", "Cancelado"]; // apartados de archivo: no muestran tarjetas
 function closedAtFor(newStatus, prevClosedAt) {
@@ -358,7 +367,7 @@ let taskAssignees = []; // responsables seleccionados (chips)
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
-  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent(), loadDeliverables(), loadRecordings()]);
+  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent(), loadDeliverables(), loadRecordings(), loadPhases()]);
   await loadTasks();
 }
 
@@ -2478,6 +2487,11 @@ function openDeliverableModal(item) {
   selC.value = item?.client_id || "";
   $("#dName").value = item?.name || "";
   $("#dMeta").value = item?.meta ?? 5;
+  const selP = $("#dPhase");
+  selP.innerHTML = '<option value="">— Sin fase —</option>' +
+    (typeof PHASES !== "undefined" ? PHASES : []).filter((p) => p.status !== "Archivada")
+      .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  selP.value = item?.phase_id || "";
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -2497,6 +2511,7 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     name,
     client_id: $("#dClient").value || null,
     meta: Math.max(1, parseInt($("#dMeta").value || "1", 10)),
+    phase_id: $("#dPhase").value || null,
     updated_at: new Date().toISOString(),
   };
   const btn = $("#btnSaveDeliverable"); btn.disabled = true; $("#btnSaveDeliverableLabel").innerHTML = '<span class="spinner"></span>';
@@ -2605,3 +2620,157 @@ async function archiveRecordingsByDeliverable(deliverableId) {
   const ligadas = RECORDINGS.filter((r) => r.deliverable_id === deliverableId && r.status !== "Archivada");
   for (const r of ligadas) await archiveRecording(r.id);
 }
+
+/* ============================================================
+   FASES (Cliente -> Fase -> Entregable -> Piezas)
+   ============================================================ */
+let PHASES = [];
+let showArchivedPhase = false;
+let phaseClientFilter = "";
+
+async function loadPhases() {
+  try {
+    const { data, error } = await sb.from("phases").select("*").order("created_at", { ascending: false });
+    PHASES = error ? [] : (data || []);
+  } catch (e) { PHASES = []; }
+}
+
+function phaseDeliverables(id) {
+  return (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).filter((d) => d.phase_id === id);
+}
+
+function fillPhaseClientFilter() {
+  const sel = $("#phaseClientFilter"); if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los clientes</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  sel.value = cur;
+}
+
+function renderPhases() {
+  const box = $("#phasesList"); if (!box) return;
+  fillPhaseClientFilter();
+  let list = PHASES.filter((p) => showArchivedPhase ? p.status === "Archivada" : p.status !== "Archivada");
+  if (phaseClientFilter) list = list.filter((p) => p.client_id === phaseClientFilter);
+  $("#phasesCount").textContent = `${list.length}`;
+  $("#btnToggleArchivedPhase").textContent = showArchivedPhase ? "Ver activas" : "Ver archivadas";
+
+  if (!list.length) {
+    box.innerHTML = `<div class="empty-state">${showArchivedPhase ? "No hay fases archivadas." : "Aún no hay fases. Crea una con “+ Nueva fase”."}</div>`;
+    return;
+  }
+
+  box.innerHTML = list.map((p) => {
+    const cli = CLIENTS.find((c) => c.id === p.client_id);
+    const dels = phaseDeliverables(p.id);
+    const delsHtml = dels.length
+      ? dels.map((d) => {
+          const pieces = (typeof deliverablePieces === "function") ? deliverablePieces(d.id) : [];
+          const done = pieces.filter((x) => x.estatus === "Entregado").length;
+          const meta = Math.max(1, d.meta || 1);
+          const pct = Math.min(100, Math.round((done / meta) * 100));
+          return `<div class="deliv-piece" data-deliv="${d.id}">
+            <span class="deliv-piece__name">${escapeHtml(d.name)}</span>
+            <span class="deliv-piece__st chip">${done}/${meta} · ${pct}%</span>
+          </div>`;
+        }).join("")
+      : `<div class="deliv-empty">Sin entregables. Créalos en Entregables y asígnalos a esta fase.</div>`;
+
+    return `<div class="deliv-card" data-phase="${p.id}">
+      <div class="deliv-card__head">
+        <div>
+          <div class="deliv-card__name">${escapeHtml(p.name)}</div>
+          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(p.estado || "Por iniciar")}</span>${p.start_date ? " · " + fmtDate(p.start_date) : ""}${p.end_date ? " → " + fmtDate(p.end_date) : ""}</div>
+        </div>
+        <div class="deliv-card__actions">
+          <button class="btn btn--ghost btn--sm" data-edit-phase="${p.id}" type="button">Editar</button>
+          ${p.status === "Archivada"
+            ? `<button class="btn btn--ghost btn--sm" data-unarchive-phase="${p.id}" type="button">Reactivar</button>`
+            : `<button class="btn btn--ghost btn--sm" data-archive-phase="${p.id}" type="button">Archivar</button>`}
+        </div>
+      </div>
+      <div class="deliv-pieces">${delsHtml}</div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-edit-phase]").forEach((b) => b.onclick = () => {
+    const p = PHASES.find((x) => x.id === b.dataset.editPhase); if (p) openPhaseModal(p);
+  });
+  box.querySelectorAll("[data-archive-phase]").forEach((b) => b.onclick = () => setPhaseStatus(b.dataset.archivePhase, "Archivada"));
+  box.querySelectorAll("[data-unarchive-phase]").forEach((b) => b.onclick = () => setPhaseStatus(b.dataset.unarchivePhase, "Activa"));
+  box.querySelectorAll(".deliv-piece[data-deliv]").forEach((el) => el.onclick = () => {
+    const d = DELIVERABLES.find((x) => x.id === el.dataset.deliv); if (d && typeof openDeliverableModal === "function") openDeliverableModal(d);
+  });
+}
+
+async function setPhaseStatus(id, status) {
+  const patch = { status, closed_at: status === "Archivada" ? new Date().toISOString() : null, updated_at: new Date().toISOString() };
+  const { error } = await sb.from("phases").update(patch).eq("id", id);
+  if (error) { toast("No se pudo actualizar"); return; }
+  await loadPhases(); renderPhases();
+  toast(status === "Archivada" ? "Fase archivada" : "Fase reactivada");
+}
+
+let editingPhase = null;
+const phaseOverlay = $("#phaseOverlay");
+
+function openPhaseModal(item) {
+  editingPhase = item || null;
+  $("#phaseMsg").classList.add("hidden");
+  $("#phaseModalTitle").textContent = item ? "Editar fase" : "Nueva fase";
+  const selC = $("#phClient");
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  selC.value = item?.client_id || (phaseClientFilter || "");
+  const selE = $("#phEstado");
+  selE.innerHTML = PHASE_PIPELINE.map((s) => `<option>${s}</option>`).join("");
+  selE.value = item?.estado || "Por iniciar";
+  $("#phName").value = item?.name || "";
+  $("#phStart").value = item?.start_date || "";
+  $("#phEnd").value = item?.end_date || "";
+  $("#btnDeletePhase").classList.toggle("hidden", !item);
+  $("#btnArchivePhase").classList.toggle("hidden", !item || item.status === "Archivada");
+  phaseOverlay.classList.add("open");
+  setTimeout(() => $("#phName").focus(), 50);
+}
+function closePhaseModal() { phaseOverlay.classList.remove("open"); editingPhase = null; }
+
+$("#btnNewPhase")?.addEventListener("click", () => openPhaseModal(null));
+$("#btnToggleArchivedPhase")?.addEventListener("click", () => { showArchivedPhase = !showArchivedPhase; renderPhases(); });
+$("#phaseClientFilter")?.addEventListener("change", (e) => { phaseClientFilter = e.target.value; renderPhases(); });
+$("#phaseModalClose")?.addEventListener("click", closePhaseModal);
+$("#btnCancelPhase")?.addEventListener("click", closePhaseModal);
+phaseOverlay?.addEventListener("click", (e) => { if (e.target === phaseOverlay) closePhaseModal(); });
+
+$("#btnSavePhase")?.addEventListener("click", async () => {
+  const name = $("#phName").value.trim();
+  if (!name) { showMsg("#phaseMsg", "Escribe un nombre."); return; }
+  const payload = {
+    name,
+    client_id: $("#phClient").value || null,
+    estado: $("#phEstado").value,
+    start_date: $("#phStart").value || null,
+    end_date: $("#phEnd").value || null,
+    updated_at: new Date().toISOString(),
+  };
+  const btn = $("#btnSavePhase"); btn.disabled = true; $("#btnSavePhaseLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingPhase) ({ error } = await sb.from("phases").update(payload).eq("id", editingPhase.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("phases").insert(payload)); }
+  btn.disabled = false; $("#btnSavePhaseLabel").textContent = "Guardar";
+  if (error) { showMsg("#phaseMsg", "No se pudo guardar: " + error.message); return; }
+  closePhaseModal(); toast(editingPhase ? "Fase actualizada" : "Fase creada");
+  await loadPhases(); renderPhases();
+});
+
+$("#btnArchivePhase")?.addEventListener("click", async () => {
+  if (!editingPhase) return; await setPhaseStatus(editingPhase.id, "Archivada"); closePhaseModal();
+});
+
+$("#btnDeletePhase")?.addEventListener("click", async () => {
+  if (!editingPhase) return;
+  const { error } = await sb.from("phases").delete().eq("id", editingPhase.id);
+  if (error) { showMsg("#phaseMsg", "No se pudo eliminar: " + error.message); return; }
+  closePhaseModal(); toast("Fase eliminada");
+  await loadPhases(); renderPhases();
+});
