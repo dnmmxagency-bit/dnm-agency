@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v58";
+const APP_VERSION = "v59";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2519,6 +2519,7 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     meta: Math.max(1, parseInt($("#dMeta").value || "1", 10)),
     phase_id: $("#dPhase").value || null,
     estado: $("#dEstado").value,
+    sync_source: "app",
     delivery_date: $("#dDelivery").value || null,
     record_date: $("#dRecord").value || null,
     updated_at: new Date().toISOString(),
