@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v59";
+const APP_VERSION = "v60";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2420,7 +2420,8 @@ function renderDeliverables() {
   }
 
   box.innerHTML = list.map((d) => {
-    const cli = CLIENTS.find((c) => c.id === d.client_id);
+    const ph = d.phase_id ? (typeof PHASES !== "undefined" ? PHASES.find((x) => x.id === d.phase_id) : null) : null;
+    const cli = CLIENTS.find((c) => c.id === (d.client_id || ph?.client_id));
     const { done, meta, pct } = deliverableProgress(d);
     const pieces = deliverablePieces(d.id);
     const piezasHtml = pieces.length
@@ -2761,6 +2762,7 @@ $("#btnSavePhase")?.addEventListener("click", async () => {
     estado: $("#phEstado").value,
     start_date: $("#phStart").value || null,
     end_date: $("#phEnd").value || null,
+    sync_source: "app",
     updated_at: new Date().toISOString(),
   };
   const btn = $("#btnSavePhase"); btn.disabled = true; $("#btnSavePhaseLabel").innerHTML = '<span class="spinner"></span>';
