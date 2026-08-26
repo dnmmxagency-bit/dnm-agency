@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v49";
+const APP_VERSION = "v50";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1669,6 +1669,7 @@ $("#btnSaveContent").onclick = async () => {
     reels_url: normalizeUrl($("#coReels").value),
     notes: $("#coNotes").value.trim() || null,
     corrections: $("#coCorr").value.trim() || null,
+    sync_source: "app",
     updated_at: new Date().toISOString(),
   };
   const btn = $("#btnSaveContent"); btn.disabled = true; $("#btnSaveContentLabel").innerHTML = '<span class="spinner"></span>';
