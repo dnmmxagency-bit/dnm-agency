@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v62";
+const APP_VERSION = "v63";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -406,8 +406,21 @@ async function loadTasks() {
     .order("created_at", { ascending: false });
   if (error) { toast("No se pudieron cargar las tareas"); TASKS = []; }
   else TASKS = data || [];
+  // Privacidad: los miembros solo ven sus propias tareas; los administradores ven todo
+  if (!isAdmin()) {
+    const me = currentProfile?.id;
+    TASKS = TASKS.filter((t) => isMyTask(t, me));
+  }
   renderBoard();
   rerenderCalendars();
+}
+
+/* Una tarea es "mía" si soy su responsable o su creador */
+function isMyTask(t, me) {
+  me = me || currentProfile?.id;
+  if (!me) return false;
+  if (t.owner_id === me) return true;
+  return Array.isArray(t.assignee_ids) && t.assignee_ids.includes(me);
 }
 
 /* ---- Utilidades de presentación ---- */
