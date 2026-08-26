@@ -141,6 +141,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
           Calendario de grabación
         </button>
+        <button class="nav__item" data-view="compartido" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>
+          Calendario compartido
+        </button>
 
         <div class="nav__group-label">Directorio</div>
         <button class="nav__item" data-view="clientes" data-admin-only type="button">
@@ -251,6 +255,21 @@
             <p class="page-desc">Solo las tareas en etapa "Grabación", para planear los días de rodaje. Toca un día para agendar una grabación.</p>
           </div>
           <div class="cal" id="cal-grabacion"></div>
+        </section>
+
+        <!-- VISTA: Calendario compartido (espejo de Notion, solo lectura) -->
+        <section class="view" id="view-compartido">
+          <div class="page-head">
+            <div class="eyebrow">Producción</div>
+            <h2 class="page-title">Calendario compartido</h2>
+            <p class="page-desc">Vista de solo lectura de TODA la producción en Notion (DNM, Inspirar y demás), por fecha de estreno. Se actualiza solo.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn--ghost btn--sm" id="btnRefreshShared" type="button">Refrescar</button>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="sharedCount">0 piezas</span>
+          </div>
+          <div class="cal" id="cal-compartido"></div>
         </section>
 
         <!-- VISTA: Clientes -->

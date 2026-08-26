@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v48";
+const APP_VERSION = "v49";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -237,6 +237,10 @@ function switchView(view) {
   if (view === "actividades" || view === "grabacion") {
     initCalendars();
     (view === "actividades" ? calAct : calGrab).render();
+  }
+  if (view === "compartido") {
+    initCalendars();
+    loadShared();
   }
   if (view === "clientes") {
     if (!isAdmin()) { switchView("tablero"); return; }
@@ -873,6 +877,18 @@ function createCalendar(mountId, opts) {
 
   function eventsByDay() {
     const map = {};
+    if (opts.shared) {
+      (typeof SHARED !== "undefined" ? SHARED : []).forEach((c) => {
+        const day = c.release_date || c.record_date;
+        if (!day) return;
+        (map[day] = map[day] || []).push({
+          kind: "shared", id: c.notion_id,
+          title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
+          department: c.department || null, estado: c.estado || null,
+        });
+      });
+      return map;
+    }
     TASKS.filter(opts.filter).forEach((t) => {
       if (!t.due_date) return;
       (map[t.due_date] = map[t.due_date] || []).push({
@@ -946,6 +962,10 @@ function createCalendar(mountId, opts) {
       const list = (byDay[key] || []);
 
       let pills = list.slice(0, maxPills).map((ev) => {
+        if (ev.kind === "shared") {
+          const dep = ev.department ? ` · ${ev.department}` : "";
+          return `<div class="cal__pill cal__pill--shared" data-kind="shared" title="${escapeHtml(ev.title + dep)}">${escapeHtml(ev.title)}${ev.department ? ` <span class="cal__dep">${escapeHtml(ev.department)}</span>` : ""}</div>`;
+        }
         if (ev.kind === "content") {
           return `<div class="cal__pill cal__pill--content" data-kind="content" data-id="${ev.id}" title="Entrega: ${escapeHtml(ev.title)}">🎬 ${escapeHtml(ev.title)}</div>`;
         }
@@ -986,22 +1006,24 @@ function createCalendar(mountId, opts) {
       b.onclick = () => { mode = b.dataset.mode; render(); };
     });
 
-    // click en una tarjeta -> editar (tarea o pieza)
-    mount.querySelectorAll(".cal__pill").forEach((p) => {
-      p.onclick = (e) => {
-        e.stopPropagation();
-        if (p.dataset.kind === "content") {
-          const c = CONTENT.find((x) => x.id === p.dataset.id);
-          if (c) openContentModal(c);
-        } else {
-          const t = TASKS.find((x) => x.id === p.dataset.id);
-          if (t) openTaskModal(t, null, opts.context);
-        }
-      };
-    });
-    mount.querySelectorAll(".cal__cell").forEach((c) => {
-      c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso }, opts.context);
-    });
+    // click en una tarjeta -> editar (tarea o pieza). En 'shared' es solo lectura.
+    if (!opts.shared) {
+      mount.querySelectorAll(".cal__pill").forEach((p) => {
+        p.onclick = (e) => {
+          e.stopPropagation();
+          if (p.dataset.kind === "content") {
+            const c = CONTENT.find((x) => x.id === p.dataset.id);
+            if (c) openContentModal(c);
+          } else {
+            const t = TASKS.find((x) => x.id === p.dataset.id);
+            if (t) openTaskModal(t, null, opts.context);
+          }
+        };
+      });
+      mount.querySelectorAll(".cal__cell").forEach((c) => {
+        c.onclick = () => openTaskModal(null, { due_date: c.dataset.day, proceso: opts.newProceso }, opts.context);
+      });
+    }
   }
 
   function shift(dir) {
@@ -1016,6 +1038,8 @@ function createCalendar(mountId, opts) {
 // Instancias
 let calAct = null;   // todas las tareas con fecha
 let calGrab = null;  // solo "Grabación"
+let calShared = null; // espejo de Notion (solo lectura)
+let SHARED = [];      // contenido compartido (todos los departamentos)
 
 function initCalendars() {
   if (!calAct) {
@@ -1030,6 +1054,9 @@ function initCalendars() {
       newProceso: "Grabación",
       context: "grabacion",
     });
+  }
+  if (!calShared) {
+    calShared = createCalendar("cal-compartido", { shared: true });
   }
 }
 
@@ -2277,3 +2304,19 @@ document.getElementById("btnAddTime").onclick = () => {
 document.querySelectorAll(".timer__quick button").forEach((b) => {
   b.onclick = () => addTime(b.dataset.min);
 });
+
+/* ============================================================
+   Calendario compartido (espejo de Notion, solo lectura)
+   ============================================================ */
+async function loadShared() {
+  try {
+    const { data, error } = await sb.from("shared_content").select("*");
+    if (error) { console.warn("shared_content:", error.message); SHARED = []; }
+    else SHARED = data || [];
+  } catch (e) { SHARED = []; }
+  const cnt = document.getElementById("sharedCount");
+  if (cnt) cnt.textContent = `${SHARED.length} ${SHARED.length === 1 ? "pieza" : "piezas"}`;
+  if (calShared) calShared.render();
+}
+
+document.getElementById("btnRefreshShared")?.addEventListener("click", loadShared);

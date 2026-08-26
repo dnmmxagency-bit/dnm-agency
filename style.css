@@ -1304,3 +1304,7 @@ textarea.input { resize: vertical; min-height: 70px; }
 /* Apartados de archivo en el tablero (Terminado/Cancelado) */
 .col-archive { border: 1px dashed var(--amber-a50); color: var(--amber-hi); font-size: 11px; text-align: center; padding: 14px 8px; }
 .column[data-estado="Terminado"], .column[data-estado="Cancelado"] { opacity: 0.85; }
+
+/* Calendario compartido: pills por departamento */
+.cal__pill--shared { background: var(--surface-3); color: #fff; border-left: 4px solid var(--text-faint); font-weight: 700; }
+.cal__dep { font-weight: 600; font-size: 9px; color: var(--amber-hi); }
