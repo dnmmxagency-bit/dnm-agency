@@ -24,27 +24,6 @@
 </head>
 <body>
 
-  <!-- Fondo ambiental: onda tenue de marca, siempre en movimiento -->
-  <div id="ambient" aria-hidden="true">
-    <span class="b1"></span><span class="b2"></span><span class="b3"></span>
-  </div>
-
-  <!-- ============================================================
-       PORTADA / INTRO — minimal
-       ============================================================ -->
-  <div id="splash">
-    <div class="splash__center">
-      <img class="splash__iso" src="icons/isotipo-white.png" alt="DNM" />
-      <div class="splash__div"></div>
-      <div class="splash__lock">
-        <span class="splash__ln">Digital</span>
-        <span class="splash__ln">Network</span>
-        <span class="splash__ln">Marketing</span>
-      </div>
-    </div>
-    <div class="splash__skip">Toca para entrar</div>
-  </div>
-
   <!-- ============================================================
        PANTALLA DE ACCESO
        ============================================================ -->
@@ -94,7 +73,6 @@
           ¿No tienes cuenta?
           <a href="#" id="linkSwitch" style="color:var(--amber)">Créala aquí</a>
         </p>
-        <div class="app-version" id="appVersion"></div>
       </div>
     </div>
   </section>
@@ -133,37 +111,15 @@
         </button>
 
         <div class="nav__group-label">Producción</div>
-        <button class="nav__item" data-view="contenido" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M7 8l4 2.5L7 13z" fill="currentColor" stroke="none"/></svg>
-          Contenido
-        </button>
-        <button class="nav__item" data-view="fases" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>
-          Fases
-        </button>
-        <button class="nav__item" data-view="entregables" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
-          Entregables
-        </button>
-        <button class="nav__item" data-view="compartido" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>
-          Grabación compartida
+        <button class="nav__item" data-view="grabacion" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
+          Calendario de grabación
         </button>
 
         <div class="nav__group-label">Directorio</div>
-        <button class="nav__item" data-view="clientes" data-admin-only type="button">
+        <button class="nav__item" data-view="clientes" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Clientes
-        </button>
-        <button class="nav__item" data-view="historial" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg>
-          Historial
-        </button>
-
-        <div class="nav__group-label" data-admin-only>Administración</div>
-        <button class="nav__item" data-view="usuarios" data-admin-only type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 2-2"/></svg>
-          Usuarios y roles
         </button>
       </nav>
 
@@ -175,23 +131,12 @@
           <div class="page-head">
             <div class="eyebrow">Tareas</div>
             <h2 class="page-title">Tablero de producción</h2>
-            <p class="page-desc">Todas las tareas del equipo, organizadas por estatus. Arrastra una tarjeta entre columnas (en computadora) o tócala para editarla y cambiar su estado.</p>
+            <p class="page-desc">Aquí vivirá el tablero Kanban con tus tareas por estado. Lo construimos en la siguiente fase.</p>
           </div>
-
-          <div class="toolbar">
-            <button class="btn btn--primary btn--newtask" id="btnNewTask" type="button">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-              Nueva tarea
-            </button>
-            <button class="btn btn--ghost btn--sm" id="btnRefresh" type="button">Refrescar</button>
-            <select class="input" id="boardClientFilter" style="width:auto">
-              <option value="">Todos los clientes</option>
-            </select>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="taskCount">0 tareas</span>
+          <div class="soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
+            <div><strong>Fase 2 — Tareas y tablero</strong><span>Crear tareas con proceso, prioridad, responsables y fecha límite; columnas Pendiente / En curso / Hecho / Cancelado.</span></div>
           </div>
-
-          <div class="board" id="board"><!-- columnas generadas dinámicamente desde ESTADOS --></div>
         </section>
 
         <!-- VISTA: Calendario de actividades -->
@@ -199,55 +144,11 @@
           <div class="page-head">
             <div class="eyebrow">Tareas</div>
             <h2 class="page-title">Calendario de actividades y pendientes</h2>
-            <p class="page-desc">Todo lo agendado por su fecha de entrega: tareas y piezas de contenido. Toca un día vacío para crear una tarea ahí, o una tarjeta para editarla.</p>
+            <p class="page-desc">Vista de mes y semana con todo lo agendado por fecha límite, sin importar el proceso.</p>
           </div>
-          <div class="cal" id="cal-actividades"></div>
-        </section>
-
-        <!-- VISTA: Contenido (piezas + invitados) -->
-        <section class="view" id="view-contenido">
-          <div class="page-head">
-            <div class="eyebrow">Producción</div>
-            <h2 class="page-title">Contenido</h2>
-            <p class="page-desc">Tus piezas y episodios con su pipeline de producción, fechas de grabación y estreno, e invitados.</p>
-          </div>
-
-          <div class="seg subtabs" id="contentTabs">
-            <button data-tab="piezas" class="active" type="button">Piezas</button>
-            <button data-tab="invitados" type="button">Invitados</button>
-          </div>
-
-          <!-- Pestaña Piezas -->
-          <div id="tab-piezas">
-            <div class="toolbar">
-              <button class="btn btn--primary" id="btnNewContent" type="button">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-                Nueva pieza
-              </button>
-              <select class="input" id="contentFilter" style="width:auto">
-                <option value="">Todos los estados</option>
-              </select>
-              <select class="input" id="contentClientFilter" style="width:auto">
-                <option value="">Todos los clientes</option>
-              </select>
-              <button class="btn btn--ghost btn--sm" id="btnMyContent" type="button">Mis piezas</button>
-              <div class="toolbar__spacer"></div>
-              <span class="count-pill" id="contentCount">0 piezas</span>
-            </div>
-            <div class="content-list" id="contentList"></div>
-          </div>
-
-          <!-- Pestaña Invitados -->
-          <div id="tab-invitados" class="hidden">
-            <div class="toolbar">
-              <button class="btn btn--primary" id="btnNewGuest" type="button">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-                Nuevo invitado
-              </button>
-              <div class="toolbar__spacer"></div>
-              <span class="count-pill" id="guestCount">0 invitados</span>
-            </div>
-            <div class="guests-grid" id="guestsGrid"></div>
+          <div class="soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+            <div><strong>Fase 3 — Calendarios</strong><span>Cuadrícula real de mes/semana con navegación y botón "Hoy".</span></div>
           </div>
         </section>
 
@@ -256,57 +157,12 @@
           <div class="page-head">
             <div class="eyebrow">Producción</div>
             <h2 class="page-title">Calendario de grabación</h2>
-            <p class="page-desc">Solo las tareas en etapa "Grabación", para planear los días de rodaje. Toca un día para agendar una grabación.</p>
+            <p class="page-desc">Solo las tareas en proceso "Por grabar", para planear los días de rodaje.</p>
           </div>
-          <div class="cal" id="cal-grabacion"></div>
-        </section>
-
-        <!-- VISTA: Fases -->
-        <section class="view" id="view-fases">
-          <div class="page-head">
-            <div class="eyebrow">Producción</div>
-            <h2 class="page-title">Fases</h2>
-            <p class="page-desc">Etapas de cada cliente. Una Fase agrupa sus Entregables. Jerarquía: Cliente → Fase → Entregable → Piezas.</p>
+          <div class="soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
+            <div><strong>Fase 3 — Calendarios</strong><span>Vista de rodaje separada del calendario general.</span></div>
           </div>
-          <div class="toolbar">
-            <button class="btn btn--primary" id="btnNewPhase" type="button">+ Nueva fase</button>
-            <select class="input input--sm" id="phaseClientFilter"><option value="">Todos los clientes</option></select>
-            <button class="btn btn--ghost btn--sm" id="btnToggleArchivedPhase" type="button">Ver archivadas</button>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="phasesCount">0</span>
-          </div>
-          <div id="phasesList"></div>
-        </section>
-
-        <!-- VISTA: Entregables -->
-        <section class="view" id="view-entregables">
-          <div class="page-head">
-            <div class="eyebrow">Producción</div>
-            <h2 class="page-title">Entregables</h2>
-            <p class="page-desc">Objetivos de piezas por entregar (ej. "5 Reels"). Cada pieza se trabaja en el Tablero; al marcarla "Entregado" sale del Tablero pero sigue aquí y suma al progreso.</p>
-          </div>
-          <div class="toolbar">
-            <button class="btn btn--primary" id="btnNewDeliverable" type="button">+ Nuevo entregable</button>
-            <button class="btn btn--ghost btn--sm" id="btnToggleArchivedDeliv" type="button">Ver archivados</button>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="deliverablesCount">0</span>
-          </div>
-          <div id="deliverablesList"></div>
-        </section>
-
-        <!-- VISTA: Calendario compartido (espejo de Notion, solo lectura) -->
-        <section class="view" id="view-compartido">
-          <div class="page-head">
-            <div class="eyebrow">Producción</div>
-            <h2 class="page-title">Calendario de grabación compartido</h2>
-            <p class="page-desc">Grabaciones de toda la organización (DNM, Inspirar y demás). Toca un día para crear una grabación de DNM; luego vincúlala en una tarea. Al terminar la tarea o archivar el entregable, la grabación se archiva.</p>
-          </div>
-          <div class="toolbar">
-            <button class="btn btn--ghost btn--sm" id="btnRefreshShared" type="button">Refrescar</button>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="sharedCount">0 piezas</span>
-          </div>
-          <div class="cal" id="cal-compartido"></div>
         </section>
 
         <!-- VISTA: Clientes -->
@@ -314,60 +170,16 @@
           <div class="page-head">
             <div class="eyebrow">Directorio</div>
             <h2 class="page-title">Clientes</h2>
-            <p class="page-desc">Da de alta y edita clientes para poder relacionarlos con tus tareas. Toca una tarjeta para editarla.</p>
+            <p class="page-desc">Alta y edición de clientes (nombre, notas, activo/inactivo) para relacionarlos con tus tareas.</p>
           </div>
-
-          <div class="toolbar">
-            <button class="btn btn--primary" id="btnNewClient" type="button">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-              Nuevo cliente
-            </button>
-            <div class="seg" id="clientFilter">
-              <button data-f="todos" class="active" type="button">Todos</button>
-              <button data-f="activos" type="button">Activos</button>
-              <button data-f="prospectos" type="button">Prospectos</button>
-            </div>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="clientCount">0 clientes</span>
+          <div class="soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <div><strong>Fase 4 — Clientes</strong><span>Directorio de clientes vinculado a las tareas.</span></div>
           </div>
-
-          <div class="clients-grid" id="clientsGrid"></div>
-        </section>
-
-        <!-- VISTA: Historial por cliente -->
-        <section class="view" id="view-historial">
-          <div class="page-head">
-            <div class="eyebrow">Directorio</div>
-            <h2 class="page-title">Historial</h2>
-            <p class="page-desc">Todo lo que ya se trabajó y cerró (tareas y piezas), con su fecha de cierre. Filtra por cliente para ver su log maestro.</p>
-          </div>
-          <div class="toolbar">
-            <select class="input" id="histClientFilter" style="width:auto">
-              <option value="">Todos los clientes</option>
-            </select>
-            <div class="toolbar__spacer"></div>
-            <span class="count-pill" id="histCount">0 cerradas</span>
-          </div>
-          <div class="content-list" id="histList"></div>
-        </section>
-
-        <!-- VISTA: Usuarios y roles (solo administradores) -->
-        <section class="view" id="view-usuarios">
-          <div class="page-head">
-            <div class="eyebrow">Administración</div>
-            <h2 class="page-title">Usuarios y roles</h2>
-            <p class="page-desc">Asigna quién es administrador. Los administradores gestionan clientes y ven todo; los editores ven todo excepto la sección de Clientes.</p>
-          </div>
-          <div class="users-list" id="usersList"></div>
         </section>
 
       </main>
     </div>
-
-    <!-- Botón flotante para nueva tarea (móvil) -->
-    <button class="fab" id="fabNewTask" type="button" title="Nueva tarea">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
 
     <!-- Navegación inferior (móvil) -->
     <nav class="bottomnav">
@@ -380,601 +192,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
           Agenda
         </button>
-        <button class="bottomnav__item" data-view="compartido" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>
+        <button class="bottomnav__item" data-view="grabacion" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 8v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/><path d="m15 11 5-3v8l-5-3"/></svg>
           Grabación
         </button>
-        <button class="bottomnav__item" data-view="contenido" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          Contenido
-        </button>
-        <button class="bottomnav__item" data-view="fases" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>
-          Fases
-        </button>
-        <button class="bottomnav__item" data-view="entregables" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
-          Entregables
-        </button>
-        <button class="bottomnav__item" data-view="clientes" data-admin-only type="button">
+        <button class="bottomnav__item" data-view="clientes" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           Clientes
         </button>
       </div>
     </nav>
 
-  </div>
-
-  <!-- ============================================================
-       MODAL: crear / editar tarea
-       ============================================================ -->
-  <div class="overlay" id="taskOverlay">
-    <div class="modal frame">
-      <div class="modal__head">
-        <h3 class="modal__title" id="taskModalTitle">Nueva tarea</h3>
-        <button class="modal__x" id="taskModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="taskMsg" class="msg hidden"></div>
-
-        <div class="field">
-          <label for="tTitle">Título</label>
-          <input class="input" type="text" id="tTitle" placeholder="Ej. Grabar testimonial cliente X" />
-        </div>
-
-        <div class="grid-2" id="rowEstadoPrio">
-          <div class="field">
-            <label for="tEstado">Estatus</label>
-            <select class="input" id="tEstado"></select>
-          </div>
-          <div class="field">
-            <label for="tPrioridad">Prioridad</label>
-            <select class="input" id="tPrioridad">
-              <option>Alta</option>
-              <option selected>Media</option>
-              <option>Baja</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field" id="fieldEtapa">
-          <label for="tProceso">Etapa de producción</label>
-          <select class="input" id="tProceso"></select>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="tFecha">Fecha de entrega</label>
-            <input class="input" type="date" id="tFecha" />
-          </div>
-          <div class="field">
-            <label for="tCliente">Cliente relacionado</label>
-            <select class="input" id="tCliente">
-              <option value="">— Sin cliente —</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="tDrive">Enlace de Drive del contenido</label>
-          <input class="input" type="url" id="tDrive" placeholder="https://drive.google.com/…" />
-        </div>
-
-        <div class="field">
-          <label for="tReels">Link de reels</label>
-          <input class="input" type="url" id="tReels" placeholder="https://… (reels / cortes)" />
-        </div>
-
-        <div class="field">
-          <label for="tContent">Episodio / pieza ligada</label>
-          <select class="input" id="tContent"><option value="">— Ninguna —</option></select>
-        </div>
-
-        <div class="field">
-          <label for="tRecording">Grabación vinculada</label>
-          <select class="input" id="tRecording"><option value="">— Ninguna —</option></select>
-        </div>
-
-        <div class="field">
-          <label>Responsables</label>
-          <div class="people" id="tPeople">
-            <div class="people__empty">Cargando equipo…</div>
-          </div>
-        </div>
-
-        <div class="field" id="tTimeField">
-          <label>Tiempo registrado <span class="field-hint">— tiempo real en esta tarea</span></label>
-          <div id="tTimeHint" class="files__hint hidden">Guarda la tarea para poder registrar tiempo.</div>
-          <div id="tTimeBox">
-            <div class="timer">
-              <span class="timer__clock" id="tTimerClock">00:00:00</span>
-              <button class="btn btn--primary btn--sm" id="btnTimer" type="button">Iniciar</button>
-              <span class="timer__total" id="tTimeTotal">Total: 0 min</span>
-            </div>
-            <div class="timer__manual">
-              <input class="input" type="number" id="tTimeManual" placeholder="min" min="1" />
-              <button class="btn btn--ghost btn--sm" id="btnAddTime" type="button">Agregar</button>
-              <span class="timer__quick">
-                <button type="button" data-min="15">+15</button>
-                <button type="button" data-min="30">+30</button>
-                <button type="button" data-min="60">+60</button>
-              </span>
-            </div>
-            <div class="notes-list" id="tTimeList"></div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Notas <span class="field-hint">— comentarios generales</span></label>
-          <div class="notes-list" id="tNotesList"></div>
-          <div class="note-add">
-            <textarea class="input" id="tNoteInput" placeholder="Escribe una nota o comentario…"></textarea>
-            <div class="note-add__row">
-              <button class="btn btn--ghost btn--sm" id="btnAddNote" type="button">Agregar nota</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Correcciones <span class="field-hint">— feedback de revisión</span></label>
-          <div class="notes-list notes-list--corr" id="tCorrList"></div>
-          <div class="note-add">
-            <textarea class="input" id="tCorrInput" placeholder="Escribe una corrección de revisión…"></textarea>
-            <div class="note-add__row">
-              <button class="btn btn--ghost btn--sm" id="btnAddCorr" type="button">Agregar corrección</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger btn--sm hidden" id="btnDeleteTask" type="button">Eliminar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelTask" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveTask" type="button"><span id="btnSaveLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       MODAL: crear / editar cliente
-       ============================================================ -->
-  <div class="overlay" id="clientOverlay">
-    <div class="modal frame">
-      <div class="modal__head">
-        <h3 class="modal__title" id="clientModalTitle">Nuevo cliente</h3>
-        <button class="modal__x" id="clientModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="clientMsg" class="msg hidden"></div>
-        <div id="clientReadonly" class="msg msg--info hidden">Solo lectura — solo los administradores pueden editar clientes.</div>
-
-        <div class="modal-section">Identidad</div>
-        <div class="field">
-          <label for="cName">Nombre</label>
-          <input class="input" type="text" id="cName" placeholder="Persona o marca (ej. Grupo Fénix)" />
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cEmpresa">Empresa</label>
-            <input class="input" type="text" id="cEmpresa" placeholder="Razón social o empresa" />
-          </div>
-          <div class="field">
-            <label for="cIndustry">Giro / industria</label>
-            <input class="input" type="text" id="cIndustry" placeholder="Ej. Restaurantes, Salud…" />
-          </div>
-        </div>
-
-        <div class="modal-section">Clasificación</div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cLabel">Etiqueta</label>
-            <select class="input" id="cLabel">
-              <option>Cliente</option>
-              <option>Prospecto</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cStatus">Estado</label>
-            <select class="input" id="cStatus">
-              <option>Prospecto</option>
-              <option selected>Activo</option>
-              <option>Pausado</option>
-            </select>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cType">Tipo de cliente</label>
-            <select class="input" id="cType">
-              <option value="">— Sin definir —</option>
-              <option>Executive Personal Brand</option>
-              <option>Empresa C-Suite Protagónico</option>
-              <option>Dual Brand</option>
-              <option>On-Air Brand (Podcast)</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cFunnel">Etapa (funnel)</label>
-            <select class="input" id="cFunnel">
-              <option>Nuevo</option>
-              <option>Contactado</option>
-              <option>Calificado</option>
-              <option>Propuesta</option>
-              <option>Negociación</option>
-              <option>Ganado</option>
-              <option>Perdido</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal-section">Contacto</div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cEmail">Correo</label>
-            <input class="input" type="email" id="cEmail" placeholder="correo@cliente.com" />
-          </div>
-          <div class="field">
-            <label for="cPosition">Posición / cargo</label>
-            <input class="input" type="text" id="cPosition" placeholder="Ej. Director general" />
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cSource">Fuente de contacto</label>
-            <select class="input" id="cSource">
-              <option value="">— Sin definir —</option>
-              <option>Correo</option>
-              <option>Facebook</option>
-              <option>Instagram</option>
-              <option>Página</option>
-              <option>Recomendación</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cContactDate">Fecha de contacto</label>
-            <input class="input" type="date" id="cContactDate" />
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="cResponsible">Responsable</label>
-            <select class="input" id="cResponsible">
-              <option value="">— Sin asignar —</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="cLeadership">Liderazgo</label>
-            <input class="input" type="text" id="cLeadership" placeholder="Quién decide / lidera" />
-          </div>
-        </div>
-
-        <div class="modal-section">Detalle</div>
-        <div class="field">
-          <label for="cNotes">Notas</label>
-          <textarea class="input" id="cNotes" placeholder="Detalles útiles del cliente…"></textarea>
-        </div>
-        <div class="field">
-          <label for="cReason">Motivo</label>
-          <input class="input" type="text" id="cReason" placeholder="Motivo de contacto o de cierre/pérdida" />
-        </div>
-
-        <div class="field" id="cFilesField">
-          <label>Archivos del cliente</label>
-          <div class="files" id="cFilesList"></div>
-          <div class="files__hint hidden" id="cFilesHint">Guarda el cliente y el panel de archivos se activará.</div>
-          <label class="btn btn--ghost btn--sm file-btn" id="cUploadBtn">
-            <input type="file" id="cFileInput" multiple hidden />
-            <span id="cUploadLabel">Subir archivo(s)</span>
-          </label>
-        </div>
-
-        <div class="field" id="cNotionField" style="display:none">
-          <label>Información de Notion <span class="field-hint">— traído del cuerpo de la ficha en Notion</span></label>
-          <div class="notion-box" id="cNotionContent"></div>
-          <a class="btn btn--ghost btn--sm" id="btnViewNotion" target="_blank" rel="noopener" style="margin-top:8px">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-            Ver en Notion
-          </a>
-        </div>
-
-        <div class="modal-section">Brief de arranque</div>
-        <div class="field">
-          <div class="files__hint hidden" id="cBriefHint">Guarda el cliente para abrir su brief.</div>
-          <button class="btn btn--ghost btn--sm hidden" id="btnOpenBrief" type="button">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
-            Abrir brief de arranque
-          </button>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger btn--sm hidden" id="btnDeleteClient" type="button">Eliminar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelClient" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveClient" type="button"><span id="btnSaveClientLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       MODAL: crear / editar pieza de contenido
-       ============================================================ -->
-  <div class="overlay" id="contentOverlay">
-    <div class="modal frame">
-      <div class="modal__head">
-        <h3 class="modal__title" id="contentModalTitle">Nueva pieza</h3>
-        <button class="modal__x" id="contentModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="contentMsg" class="msg hidden"></div>
-
-        <div class="field">
-          <label for="coTitle">Título</label>
-          <input class="input" type="text" id="coTitle" placeholder="Ej. Episodio con Marisela" />
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="coChapter">Capítulo</label>
-            <input class="input" type="number" id="coChapter" placeholder="Nº" />
-          </div>
-          <div class="field">
-            <label for="coEstado">Etapa de producción</label>
-            <select class="input" id="coEstado"></select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="coEstatus">Estatus (aparece en el Tablero)</label>
-          <select class="input" id="coEstatus"></select>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="coRecord">Fecha de grabación</label>
-            <input class="input" type="date" id="coRecord" />
-          </div>
-          <div class="field">
-            <label for="coRelease">Fecha de estreno</label>
-            <input class="input" type="date" id="coRelease" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="coDelivery">Fecha de entrega</label>
-          <input class="input" type="date" id="coDelivery" />
-        </div>
-        <div class="field">
-          <label for="coClient">Cliente</label>
-          <select class="input" id="coClient"><option value="">— Sin cliente —</option></select>
-        </div>
-        <div class="field">
-          <label for="coDeliverable">Entregable</label>
-          <select class="input" id="coDeliverable"><option value="">— Sin entregable —</option></select>
-        </div>
-        <div class="field">
-          <label>Invitados</label>
-          <div class="people" id="coGuests"></div>
-        </div>
-        <div class="field">
-          <label>Editores (responsables)</label>
-          <div class="people" id="coEditors"></div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="coCover">Portada (enlace de imagen)</label>
-            <input class="input" type="url" id="coCover" placeholder="https://…" />
-          </div>
-          <div class="field">
-            <label for="coDrive">Enlace de Drive</label>
-            <input class="input" type="url" id="coDrive" placeholder="https://drive.google.com/…" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="coReels">Link de reels</label>
-          <input class="input" type="url" id="coReels" placeholder="https://… (reels / cortes)" />
-        </div>
-        <div class="field">
-          <label for="coNotes">Notas</label>
-          <textarea class="input" id="coNotes" placeholder="Notas de la pieza…"></textarea>
-        </div>
-        <div class="field">
-          <label for="coCorr">Correcciones <span class="field-hint">— feedback de revisión</span></label>
-          <textarea class="input" id="coCorr" placeholder="Correcciones de revisión…"></textarea>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger btn--sm hidden" id="btnDeleteContent" type="button">Eliminar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelContent" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveContent" type="button"><span id="btnSaveContentLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       MODAL: crear / editar invitado
-       ============================================================ -->
-  <div class="overlay" id="guestOverlay">
-    <div class="modal frame">
-      <div class="modal__head">
-        <h3 class="modal__title" id="guestModalTitle">Nuevo invitado</h3>
-        <button class="modal__x" id="guestModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="guestMsg" class="msg hidden"></div>
-        <div class="field">
-          <label for="guName">Nombre</label>
-          <input class="input" type="text" id="guName" placeholder="Nombre del invitado" />
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="guInstagram">Instagram</label>
-            <input class="input" type="text" id="guInstagram" placeholder="@usuario" />
-          </div>
-          <div class="field">
-            <label for="guEmail">Correo</label>
-            <input class="input" type="email" id="guEmail" placeholder="correo@ejemplo.com" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="guNotes">Notas</label>
-          <textarea class="input" id="guNotes" placeholder="Bio, temas, contacto…"></textarea>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger btn--sm hidden" id="btnDeleteGuest" type="button">Eliminar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelGuest" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveGuest" type="button"><span id="btnSaveGuestLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       MODAL: Brief de arranque
-       ============================================================ -->
-  <div class="overlay" id="briefOverlay">
-    <div class="modal modal--wide frame">
-      <div class="modal__head">
-        <h3 class="modal__title" id="briefModalTitle">Brief de arranque</h3>
-        <button class="modal__x" id="briefModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body" id="briefBody"></div>
-      <div class="modal__foot">
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelBrief" type="button">Cerrar</button>
-        <button class="btn btn--primary" id="btnSaveBrief" type="button"><span id="btnSaveBriefLabel">Guardar brief</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Entregable -->
-  <div class="overlay" id="deliverableOverlay">
-    <div class="modal modal--sm">
-      <div class="modal__head">
-        <h3 class="modal__title" id="deliverableModalTitle">Nuevo entregable</h3>
-        <button class="modal__x" id="deliverableModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="deliverableMsg" class="msg msg--error hidden"></div>
-        <div class="field">
-          <label for="dName">Nombre del entregable</label>
-          <input class="input" id="dName" placeholder="Ej. 5 Reels — Septiembre" />
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="dClient">Cliente</label>
-            <select class="input" id="dClient"><option value="">— Sin cliente —</option></select>
-          </div>
-          <div class="field">
-            <label for="dMeta">Meta (nº de piezas)</label>
-            <input class="input" type="number" id="dMeta" min="1" value="5" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="dPhase">Fase</label>
-          <select class="input" id="dPhase"><option value="">— Sin fase —</option></select>
-        </div>
-        <div class="field">
-          <label for="dEstado">Estado</label>
-          <select class="input" id="dEstado"></select>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="dDelivery">Fecha de entrega</label>
-            <input class="input" type="date" id="dDelivery" />
-          </div>
-          <div class="field">
-            <label for="dRecord">Fecha de grabación</label>
-            <input class="input" type="date" id="dRecord" />
-          </div>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelDeliverable" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveDeliverable" type="button"><span id="btnSaveDeliverableLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Fase -->
-  <div class="overlay" id="phaseOverlay">
-    <div class="modal modal--sm">
-      <div class="modal__head">
-        <h3 class="modal__title" id="phaseModalTitle">Nueva fase</h3>
-        <button class="modal__x" id="phaseModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="phaseMsg" class="msg msg--error hidden"></div>
-        <div class="field">
-          <label for="phName">Nombre de la fase</label>
-          <input class="input" id="phName" placeholder="Ej. Lanzamiento — Septiembre" />
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="phClient">Cliente</label>
-            <select class="input" id="phClient"><option value="">— Sin cliente —</option></select>
-          </div>
-          <div class="field">
-            <label for="phEstado">Estado</label>
-            <select class="input" id="phEstado"></select>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="phStart">Inicio</label>
-            <input class="input" type="date" id="phStart" />
-          </div>
-          <div class="field">
-            <label for="phEnd">Fin</label>
-            <input class="input" type="date" id="phEnd" />
-          </div>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger hidden" id="btnDeletePhase" type="button">Eliminar</button>
-        <button class="btn btn--ghost btn--sm hidden" id="btnArchivePhase" type="button">Archivar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelPhase" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSavePhase" type="button"><span id="btnSavePhaseLabel">Guardar</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Grabación -->
-  <div class="overlay" id="recordingOverlay">
-    <div class="modal modal--sm">
-      <div class="modal__head">
-        <h3 class="modal__title" id="recordingModalTitle">Nueva grabación</h3>
-        <button class="modal__x" id="recordingModalClose" type="button" aria-label="Cerrar">&times;</button>
-      </div>
-      <div class="modal__body">
-        <div id="recordingMsg" class="msg msg--error hidden"></div>
-        <div class="field">
-          <label for="rName">Nombre de la grabación</label>
-          <input class="input" id="rName" placeholder="Ej. Sesión LG&G — Reels" />
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="rDate">Fecha</label>
-            <input class="input" type="date" id="rDate" />
-          </div>
-          <div class="field">
-            <label for="rClient">Cliente</label>
-            <select class="input" id="rClient"><option value="">— Sin cliente —</option></select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="rDeliverable">Entregable (opcional)</label>
-          <select class="input" id="rDeliverable"><option value="">— Sin entregable —</option></select>
-        </div>
-      </div>
-      <div class="modal__foot">
-        <button class="btn btn--danger hidden" id="btnDeleteRecording" type="button">Eliminar</button>
-        <button class="btn btn--ghost btn--sm hidden" id="btnArchiveRecording" type="button">Archivar</button>
-        <div class="toolbar__spacer"></div>
-        <button class="btn btn--ghost" id="btnCancelRecording" type="button">Cancelar</button>
-        <button class="btn btn--primary" id="btnSaveRecording" type="button"><span id="btnSaveRecordingLabel">Guardar</span></button>
-      </div>
-    </div>
   </div>
 
   <div id="toast" class="toast"></div>
