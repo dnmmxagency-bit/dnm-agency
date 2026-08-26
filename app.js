@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v52";
+const APP_VERSION = "v53";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -878,13 +878,25 @@ function createCalendar(mountId, opts) {
   function eventsByDay() {
     const map = {};
     if (opts.shared) {
+      const seen = new Set();
       (typeof SHARED !== "undefined" ? SHARED : []).forEach((c) => {
         const day = c.record_date; // exclusivo para grabaciones
         if (!day) return;
+        if (c.notion_id) seen.add(c.notion_id);
         (map[day] = map[day] || []).push({
           kind: "shared", id: c.notion_id,
           title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
           department: c.department || null, estado: c.estado || null,
+        });
+      });
+      // contenido de DNM creado en la app (aparece al instante, antes del espejo)
+      (typeof CONTENT !== "undefined" ? CONTENT : []).forEach((c) => {
+        if (!c.record_date) return;
+        if (c.notion_id && seen.has(c.notion_id)) return; // ya viene del espejo
+        (map[c.record_date] = map[c.record_date] || []).push({
+          kind: "shared", id: c.id,
+          title: (c.chapter != null ? "#" + c.chapter + " " : "") + (c.title || "Pieza"),
+          department: "DNM", estado: c.estado || null,
         });
       });
       return map;
@@ -1007,7 +1019,12 @@ function createCalendar(mountId, opts) {
     });
 
     // click en una tarjeta -> editar (tarea o pieza). En 'shared' es solo lectura.
-    if (!opts.shared) {
+    if (opts.shared) {
+      // tocar un día crea una pieza de DNM con esa fecha de grabación
+      mount.querySelectorAll(".cal__cell").forEach((c) => {
+        c.onclick = () => openContentModal(null, { record_date: c.dataset.day, estado: "Grabación" });
+      });
+    } else {
       mount.querySelectorAll(".cal__pill").forEach((p) => {
         p.onclick = (e) => {
           e.stopPropagation();
@@ -1586,7 +1603,7 @@ function renderContent() {
 /* ---- Modal de pieza ---- */
 const contentOverlay = $("#contentOverlay");
 
-function openContentModal(item) {
+function openContentModal(item, prefill) {
   editingContent = item || null;
   $("#contentMsg").classList.add("hidden");
   $("#contentModalTitle").textContent = item ? "Editar pieza" : "Nueva pieza";
@@ -1595,7 +1612,7 @@ function openContentModal(item) {
   // estado
   const selE = $("#coEstado");
   selE.innerHTML = CONTENT_ESTADOS.map((e) => `<option>${e}</option>`).join("");
-  selE.value = item?.estado || "Agendado en calendario";
+  selE.value = item?.estado || (prefill && prefill.estado) || "Agendado en calendario";
   // estatus (aparece en el Tablero)
   const selSt = $("#coEstatus");
   selSt.innerHTML = TASK_STATUS.map((s) => `<option>${s}</option>`).join("");
@@ -1619,7 +1636,7 @@ function openContentModal(item) {
 
   $("#coTitle").value = item?.title || "";
   $("#coChapter").value = item?.chapter ?? "";
-  $("#coRecord").value = item?.record_date || "";
+  $("#coRecord").value = item?.record_date || (prefill && prefill.record_date) || "";
   $("#coRelease").value = item?.release_date || "";
   $("#coDelivery").value = item?.delivery_date || "";
   $("#coCover").value = item?.cover_url || "";
@@ -1680,6 +1697,7 @@ $("#btnSaveContent").onclick = async () => {
   if (error) { showMsg("#contentMsg", "No se pudo guardar: " + error.message); return; }
   closeContentModal(); toast(editingContent ? "Pieza actualizada" : "Pieza creada");
   await loadContent(); renderContent(); renderBoard();
+  if (calShared) calShared.render();
 };
 
 $("#btnDeleteContent").onclick = async () => {
