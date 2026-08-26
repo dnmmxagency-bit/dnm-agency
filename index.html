@@ -691,10 +691,18 @@
 
         <div class="modal-section">Brief de arranque</div>
         <div class="field">
+          <label for="cBriefUrl">Link del brief en Notion</label>
+          <input class="input" type="url" id="cBriefUrl" placeholder="https://notion.so/… (pega el link del brief del cliente)" />
+          <a class="btn btn--ghost btn--sm hidden" id="btnBriefNotion" target="_blank" rel="noopener" style="margin-top:8px">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+            Ver brief en Notion
+          </a>
+        </div>
+        <div class="field">
           <div class="files__hint hidden" id="cBriefHint">Guarda el cliente para abrir su brief.</div>
           <button class="btn btn--ghost btn--sm hidden" id="btnOpenBrief" type="button">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
-            Abrir brief de arranque
+            Abrir brief de arranque (en la app)
           </button>
         </div>
       </div>

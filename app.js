@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v61";
+const APP_VERSION = "v62";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1223,6 +1223,9 @@ function openClientModal(client) {
 
   $("#cName").value = client?.name || "";
   renderClientLogoPreview();
+  // Link del brief en Notion
+  $("#cBriefUrl").value = client?.brief_url || "";
+  updateBriefNotionBtn();
   $("#cEmpresa").value = client?.empresa || "";
   $("#cIndustry").value = client?.industry || "";
   $("#cLabel").value = client?.label || "Cliente";
@@ -1300,6 +1303,7 @@ $("#btnSaveClient").onclick = async () => {
     liderazgo: $("#cLeadership").value.trim() || null,
     notes: $("#cNotes").value.trim() || null,
     reason: $("#cReason").value.trim() || null,
+    brief_url: $("#cBriefUrl").value.trim() || null,
     sync_source: "app",
   };
 
@@ -2878,3 +2882,13 @@ document.getElementById("cLogoRemove")?.addEventListener("click", async () => {
   renderClients();
   toast("Logo quitado");
 });
+
+/* Botón "Ver brief en Notion": se activa cuando hay link válido */
+function updateBriefNotionBtn() {
+  const url = ($("#cBriefUrl")?.value || "").trim();
+  const btn = document.getElementById("btnBriefNotion");
+  if (!btn) return;
+  if (url) { btn.href = normalizeUrl(url); btn.classList.remove("hidden"); }
+  else { btn.classList.add("hidden"); }
+}
+document.getElementById("cBriefUrl")?.addEventListener("input", updateBriefNotionBtn);
