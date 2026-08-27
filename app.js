@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v91";
+const APP_VERSION = "v92";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2708,6 +2708,7 @@ function renderDeliverables() {
           ${assigneeMinis(d.assignee_ids)}
         </div>
         <div class="deliv-card__actions">
+          ${d.structure ? `<button class="btn btn--ghost btn--sm" data-prod-deliv="${d.id}" type="button">📖 Ficha</button>` : ""}
           <button class="btn btn--ghost btn--sm" data-edit-deliv="${d.id}" type="button">Editar</button>
           ${d.status === "Archivado"
             ? `<button class="btn btn--ghost btn--sm" data-unarchive-deliv="${d.id}" type="button">Reactivar</button>`
@@ -2724,6 +2725,7 @@ function renderDeliverables() {
   box.querySelectorAll("[data-edit-deliv]").forEach((b) => b.onclick = () => {
     const d = DELIVERABLES.find((x) => x.id === b.dataset.editDeliv); if (d) openDeliverableModal(d);
   });
+  box.querySelectorAll("[data-prod-deliv]").forEach((b) => b.onclick = () => openDeliverableProd(b.dataset.prodDeliv));
   box.querySelectorAll("[data-archive-deliv]").forEach((b) => b.onclick = () => setDeliverableStatus(b.dataset.archiveDeliv, "Archivado"));
   box.querySelectorAll("[data-unarchive-deliv]").forEach((b) => b.onclick = () => setDeliverableStatus(b.dataset.unarchiveDeliv, "Activo"));
   box.querySelectorAll(".deliv-piece").forEach((el) => el.onclick = () => {
@@ -3514,3 +3516,30 @@ document.getElementById("dStructureToolbar")?.addEventListener("click", (e) => {
   const b = e.target.closest("[data-md]");
   if (b) { e.preventDefault(); mdInsert(b.dataset.md); }
 });
+
+/* ============================================================
+   FICHA DE PRODUCCIÓN (vista amplia y cómoda del entregable)
+   ============================================================ */
+function openDeliverableProd(id) {
+  const d = (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).find((x) => x.id === id);
+  if (!d) return;
+  const ph = (typeof PHASES !== "undefined") ? PHASES.find((p) => p.id === d.phase_id) : null;
+  const cli = CLIENTS.find((c) => c.id === (d.client_id || ph?.client_id));
+  const resp = asgIds(d).map(memberName).filter(Boolean).join(", ");
+  const bits = [];
+  if (cli) bits.push(escapeHtml(cli.name));
+  if (d.estado) bits.push(escapeHtml(d.estado));
+  if (d.delivery_date) bits.push("Entrega: " + fmtDate(d.delivery_date));
+  if (d.record_date) bits.push("Grabación: " + fmtDate(d.record_date));
+  if (resp) bits.push("Responsables: " + escapeHtml(resp));
+  const head = `<div class="prod-head">
+    <h2 class="prod-title">${escapeHtml(d.name)}</h2>
+    <div class="prod-meta">${bits.join(" · ")}</div>
+  </div>`;
+  const body = d.structure ? mdToHtml(d.structure) : '<p class="field-hint">Este entregable aún no tiene estructura.</p>';
+  document.getElementById("prodBody").innerHTML = head + `<div class="md prod-md">${body}</div>`;
+  document.getElementById("prodOverlay")?.classList.add("open");
+}
+document.getElementById("prodClose")?.addEventListener("click", () => document.getElementById("prodOverlay")?.classList.remove("open"));
+document.getElementById("prodOverlay")?.addEventListener("click", (e) => { if (e.target.id === "prodOverlay") e.currentTarget.classList.remove("open"); });
+document.getElementById("prodPrint")?.addEventListener("click", () => window.print());

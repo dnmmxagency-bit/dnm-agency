@@ -474,6 +474,20 @@
 
   </div>
 
+  <!-- Modal: Ficha de producción (lectura cómoda) -->
+  <div class="overlay" id="prodOverlay">
+    <div class="modal modal--wide frame">
+      <div class="modal__head">
+        <h3 class="modal__title">Ficha de producción</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn--ghost btn--sm" id="prodPrint" type="button">🖨 Imprimir / PDF</button>
+          <button class="modal__x" id="prodClose" type="button" aria-label="Cerrar">&times;</button>
+        </div>
+      </div>
+      <div class="modal__body" id="prodBody"></div>
+    </div>
+  </div>
+
   <!-- Modal: Sincronizar con Notion -->
   <div class="overlay" id="syncOverlay">
     <div class="modal frame">
