@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v86";
+const APP_VERSION = "v87";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3425,6 +3425,31 @@ async function runSync(key) {
     }
   }, t.delay);
 }
+async function runSyncAll() {
+  const btn = document.getElementById("btnSyncAll");
+  if (btn) btn.disabled = true;
+  const targets = SYNC_DEFAULTS.filter((t) => t.key !== "estructura"); // la pesada va aparte
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      const fn = syncFnName(t.key, t.fn);
+      syncStatus(`Sincronizando ${t.label} (${i + 1}/${targets.length})… no cierres esta ventana.`);
+      try { await fetch(SYNC_BASE + fn + (t.extra || ""), { mode: "no-cors" }); } catch (_) {}
+      await new Promise((r) => setTimeout(r, t.delay)); // espera a que termine antes de la siguiente
+    }
+    syncStatus("Actualizando datos en la app…");
+    try {
+      await loadTasks(); await loadPhases(); await loadDeliverables();
+      await loadClients(); await loadRecordings(); await loadContent();
+    } catch (_) {}
+    renderAll();
+    syncStatus("✓ Sincronización completa. (La Estructura se corre aparte con su botón.)", "ok");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+document.getElementById("btnSyncAll")?.addEventListener("click", runSyncAll);
+
 document.getElementById("btnSyncNotion")?.addEventListener("click", () => {
   renderSyncRows();
   document.getElementById("syncStatus")?.classList.add("hidden");
