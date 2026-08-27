@@ -1016,6 +1016,17 @@
             <input class="input" type="date" id="dRecord" />
           </div>
         </div>
+        <details class="collapse" id="dStructureBox">
+          <summary>Estructura / guion</summary>
+          <div class="collapse__body">
+            <p class="field-hint" style="margin:0 0 8px">Escribe aquí los slides, guion, caption y CTA. Formato simple: <code>##</code> para títulos, <code>**negrita**</code>, <code>-</code> para listas. Se ve ordenado en la tarjeta del entregable.</p>
+            <textarea class="input" id="dStructure" rows="12" placeholder="## Carrusel 1&#10;**Slide 1 — Gancho**&#10;Texto del gancho…&#10;**Caption:**&#10;…&#10;**CTA:** …"></textarea>
+            <div class="note-add__row" style="margin-top:8px">
+              <button class="btn btn--ghost btn--sm" id="dStructurePreviewBtn" type="button">Vista previa</button>
+            </div>
+            <div class="md" id="dStructurePreview" style="margin-top:10px"></div>
+          </div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>

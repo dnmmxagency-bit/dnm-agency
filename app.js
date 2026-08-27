@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v88";
+const APP_VERSION = "v89";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2769,6 +2769,11 @@ function openDeliverableModal(item) {
   delivAssignees = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
   makeMultiSelect($("#dPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), delivAssignees,
     { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
+  // Estructura / guion (editable en la app)
+  const dStruct = document.getElementById("dStructure");
+  if (dStruct) dStruct.value = item?.structure || "";
+  const dPrev = document.getElementById("dStructurePreview");
+  if (dPrev) dPrev.innerHTML = "";
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -2791,6 +2796,7 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     phase_id: $("#dPhase").value || null,
     estado: $("#dEstado").value,
     assignee_ids: delivAssignees.slice(),
+    structure: ($("#dStructure")?.value || "").trim() || null,
     sync_source: "app",
     delivery_date: $("#dDelivery").value || null,
     record_date: $("#dRecord").value || null,
@@ -3458,3 +3464,10 @@ document.getElementById("btnSyncNotion")?.addEventListener("click", () => {
 document.getElementById("syncModalClose")?.addEventListener("click", () => document.getElementById("syncOverlay")?.classList.remove("open"));
 document.getElementById("syncModalCancel")?.addEventListener("click", () => document.getElementById("syncOverlay")?.classList.remove("open"));
 document.getElementById("syncOverlay")?.addEventListener("click", (e) => { if (e.target.id === "syncOverlay") e.currentTarget.classList.remove("open"); });
+
+/* Vista previa del editor de estructura del entregable */
+document.getElementById("dStructurePreviewBtn")?.addEventListener("click", () => {
+  const src = document.getElementById("dStructure")?.value || "";
+  const box = document.getElementById("dStructurePreview");
+  if (box) box.innerHTML = src.trim() ? mdToHtml(src) : '<span class="field-hint">Nada que previsualizar aún.</span>';
+});
