@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v76";
+const APP_VERSION = "v77";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -447,13 +447,24 @@ function showLoader(on) {
   if (el) el.classList.toggle("hidden", !on);
 }
 
+/* Repinta TODAS las secciones (tras hidratar caché o terminar la carga) */
+function renderAll() {
+  const safe = (fn) => { try { if (typeof fn === "function") fn(); } catch (_) {} };
+  safe(renderBoard);
+  safe(typeof renderContent === "function" ? renderContent : null);
+  safe(typeof renderClients === "function" ? renderClients : null);
+  safe(typeof renderDeliverables === "function" ? renderDeliverables : null);
+  safe(typeof renderPhases === "function" ? renderPhases : null);
+  safe(typeof renderGuests === "function" ? renderGuests : null);
+  safe(typeof rerenderCalendars === "function" ? rerenderCalendars : null);
+  try { if (typeof calShared !== "undefined" && calShared) calShared.render(); } catch (_) {}
+}
+
 async function bootData() {
   // 1) Copia local instantánea (si existe): muestra datos de la última vez de inmediato
   const hydrated = hydrateCache();
   if (hydrated) {
-    renderBoard();
-    if (typeof renderContent === "function") renderContent();
-    if (typeof renderClients === "function") renderClients();
+    renderAll();
   } else {
     showLoader(true); // primera vez o tras cerrar sesión: muestra pantalla de carga
   }
@@ -464,14 +475,12 @@ async function bootData() {
   showLoader(false);
   saveCache();
 
-  // 3) El resto en segundo plano — no bloquea la entrada
+  // 3) El resto en segundo plano — y al terminar, repinta TODAS las secciones
   Promise.all([
     loadClientFileCounts(), loadGuests(), loadContent(),
     loadDeliverables(), loadRecordings(), loadPhases(),
   ]).then(() => {
-    renderBoard();
-    if (typeof renderContent === "function") renderContent();
-    if (typeof renderClients === "function") renderClients();
+    renderAll();
     saveCache();
   }).catch(() => {});
 }
