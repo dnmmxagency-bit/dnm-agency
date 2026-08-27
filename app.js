@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v75";
+const APP_VERSION = "v76";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2821,6 +2821,23 @@ async function archiveRecordingsByDeliverable(deliverableId) {
 let PHASES = [];
 let showArchivedPhase = false;
 let phaseClientFilter = "";
+let phaseTab = ""; // "" = Todas, o el id de una fase
+
+function renderPhaseTabs(list) {
+  const bar = document.getElementById("phaseTabs");
+  if (!bar) return;
+  if (!list.length) { bar.innerHTML = ""; return; }
+  const tabs = [`<button class="phase-tab ${phaseTab === "" ? "active" : ""}" data-tab="">Todas</button>`]
+    .concat(list.map((p) => {
+      const cli = CLIENTS.find((c) => c.id === p.client_id);
+      const label = (cli ? cli.name + " · " : "") + p.name;
+      return `<button class="phase-tab ${phaseTab === p.id ? "active" : ""}" data-tab="${p.id}" title="${escapeHtml(label)}">${escapeHtml(p.name)}</button>`;
+    }));
+  bar.innerHTML = tabs.join("");
+  bar.querySelectorAll(".phase-tab").forEach((b) => {
+    b.onclick = () => { phaseTab = b.dataset.tab; renderPhases(); };
+  });
+}
 
 async function loadPhases() {
   try {
@@ -2847,6 +2864,12 @@ function renderPhases() {
   let list = PHASES.filter((p) => showArchivedPhase ? p.status === "Archivada" : p.status !== "Archivada");
   if (phaseClientFilter) list = list.filter((p) => p.client_id === phaseClientFilter);
   if (!isAdmin()) list = list.filter(isMineItem); // privacidad: miembros ven solo sus fases
+
+  // Barra de pestañas (Todas + una por fase)
+  renderPhaseTabs(list);
+  // Si hay una fase seleccionada y sigue en la lista, muestra solo esa
+  if (phaseTab && list.some((p) => p.id === phaseTab)) list = list.filter((p) => p.id === phaseTab);
+
   $("#phasesCount").textContent = `${list.length}`;
   $("#btnToggleArchivedPhase").textContent = showArchivedPhase ? "Ver activas" : "Ver archivadas";
 

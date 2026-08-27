@@ -1374,3 +1374,11 @@ textarea.input { resize: vertical; min-height: 70px; }
 .pass-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: 0; padding: 6px; cursor: pointer; color: var(--text-faint, #8a8578); display: flex; align-items: center; }
 .pass-toggle:hover { color: var(--amber, #C77826); }
 .pass-toggle .hidden { display: none; }
+
+/* ===== Pestañas de fases (deslizables) ===== */
+.phase-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.phase-tabs::-webkit-scrollbar { height: 6px; }
+.phase-tabs::-webkit-scrollbar-thumb { background: rgba(199,120,38,.35); border-radius: 3px; }
+.phase-tab { flex: 0 0 auto; white-space: nowrap; padding: 8px 14px; background: var(--surface-2, #14130f); color: var(--text-dim, #b8b2a5); border: 1px solid var(--border, #2a2822); border-radius: 999px; font-size: 13px; cursor: pointer; transition: all .15s; }
+.phase-tab:hover { border-color: var(--amber, #C77826); color: #fff; }
+.phase-tab.active { background: var(--amber, #C77826); color: #0D0D0A; border-color: var(--amber, #C77826); font-weight: 600; }
