@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v80";
+const APP_VERSION = "v81";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -411,6 +411,7 @@ let taskAssignees = []; // responsables seleccionados (chips)
 let delivAssignees = [];
 let phaseAssignees = [];
 let clientAssignees = [];
+let clientAiLinks = [];
 
 /* ---- Carga inicial de datos al entrar ---- */
 /* ============================================================
@@ -1360,6 +1361,7 @@ function renderClients() {
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
       ${(() => { const pr = clientProgress(c.id); return pr ? `<div class="ccard__prog"><div class="deliv-bar"><div class="deliv-bar__fill" style="width:${pr.pct}%"></div></div><div class="deliv-bar__label">${pr.pct}% · ${pr.done}/${pr.total} entregables</div></div>` : ""; })()}
+      ${(Array.isArray(c.ai_links) && c.ai_links.length) ? `<div class="ccard__ailinks">${c.ai_links.filter((l) => l.url).map((l) => `<a class="ai-chip" href="${escapeHtml(l.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(l.label || "Enlace")}</a>`).join("")}</div>` : ""}
       <div class="ccard__foot">
         <div class="ccard__badges">
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
@@ -1396,6 +1398,9 @@ function openClientModal(client) {
   clientAssignees = (client && Array.isArray(client.assignee_ids)) ? client.assignee_ids.slice() : [];
   makeMultiSelect($("#cPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), clientAssignees,
     { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
+  // Enlaces rápidos (IAs)
+  clientAiLinks = (client && Array.isArray(client.ai_links)) ? client.ai_links.map((l) => ({ label: l.label || "", url: l.url || "" })) : [];
+  renderAiLinksEditor();
   // Link del brief en Notion
   $("#cBriefUrl").value = client?.brief_url || "";
   updateBriefNotionBtn();
@@ -1478,6 +1483,7 @@ $("#btnSaveClient").onclick = async () => {
     reason: $("#cReason").value.trim() || null,
     brief_url: $("#cBriefUrl").value.trim() || null,
     assignee_ids: clientAssignees.slice(),
+    ai_links: clientAiLinks.filter((l) => (l.url || "").trim()).map((l) => ({ label: (l.label || "").trim() || "Enlace", url: normalizeUrl(l.url.trim()) })),
     sync_source: "app",
   };
 
@@ -3166,3 +3172,25 @@ function assigneeMinis(assignee_ids) {
   if (ids.length > 3) html += `<span class="mini more">+${ids.length - 3}</span>`;
   return html + "</span>";
 }
+
+/* ============================================================
+   EDITOR DE ENLACES RÁPIDOS (IAs y más) por cliente
+   ============================================================ */
+function renderAiLinksEditor() {
+  const box = document.getElementById("cAiLinks");
+  if (!box) return;
+  box.innerHTML = clientAiLinks.map((l, i) => `
+    <div class="ai-link-row">
+      <input class="input input--sm ai-link-label" data-i="${i}" placeholder="Nombre (ej. Claude)" value="${escapeHtml(l.label || "")}" />
+      <input class="input input--sm ai-link-url" data-i="${i}" placeholder="https://…" value="${escapeHtml(l.url || "")}" />
+      <button class="btn btn--ghost btn--sm ai-link-del" data-i="${i}" type="button" title="Quitar">✕</button>
+    </div>`).join("");
+  box.querySelectorAll(".ai-link-label").forEach((el) => el.oninput = () => { clientAiLinks[+el.dataset.i].label = el.value; });
+  box.querySelectorAll(".ai-link-url").forEach((el) => el.oninput = () => { clientAiLinks[+el.dataset.i].url = el.value; });
+  box.querySelectorAll(".ai-link-del").forEach((el) => el.onclick = () => { clientAiLinks.splice(+el.dataset.i, 1); renderAiLinksEditor(); });
+}
+document.getElementById("btnAddAiLink")?.addEventListener("click", () => {
+  clientAiLinks.push({ label: "", url: "" });
+  renderAiLinksEditor();
+  document.querySelector("#cAiLinks .ai-link-row:last-child .ai-link-label")?.focus();
+});
