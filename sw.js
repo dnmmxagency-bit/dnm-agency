@@ -7,7 +7,7 @@
    IMPORTANTE: sube el número de versión (v1 -> v2 -> ...) cada vez
    que cambies el código, para forzar que se limpie el caché viejo.
    ============================================================ */
-const CACHE_NAME = "dnm-agency-v70";
+const CACHE_NAME = "dnm-agency-v71";
 
 const CORE_ASSETS = [
   "./",
@@ -41,27 +41,23 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Interceptar peticiones
+// Interceptar peticiones — STALE-WHILE-REVALIDATE
+// Sirve al instante lo cacheado (arranque rápido) y actualiza en segundo plano.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-
-  // Solo GET; nada de Supabase/APIs ni otros métodos
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // deja pasar CDN, Supabase, fuentes
 
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        // Guarda una copia fresca en caché
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-        return res;
-      })
-      .catch(async () => {
-        // Sin red: usa el caché; si es navegación, cae al index
-        const cached = await caches.match(req);
-        return cached || caches.match("./index.html");
-      })
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(req);
+      const network = fetch(req)
+        .then((res) => { if (res && res.ok) cache.put(req, res.clone()); return res; })
+        .catch(() => null);
+      // Si hay copia en caché, la devuelve YA (rápido) y actualiza atrás;
+      // si no, espera a la red; si tampoco, cae al index.
+      return cached || (await network) || cache.match("./index.html");
+    })
   );
 });
