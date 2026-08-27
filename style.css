@@ -1441,3 +1441,9 @@ textarea.input { resize: vertical; min-height: 70px; }
 .sync-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .sync-row__label { flex: 0 0 130px; font-size: 13px; color: var(--text-dim,#b8b2a5); }
 .sync-row__fn { flex: 1 1 auto; font-size: 12px; }
+
+/* Barra de formato + tablas del editor de estructura */
+.md-toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.md-table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+.md-table th, .md-table td { border: 1px solid var(--border,#2a2822); padding: 6px 10px; text-align: left; vertical-align: top; }
+.md-table th { background: var(--surface-2,#14130f); color: #fff; }

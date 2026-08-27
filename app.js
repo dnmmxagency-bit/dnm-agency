@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v89";
+const APP_VERSION = "v90";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3224,14 +3224,30 @@ document.getElementById("btnAddAiLink")?.addEventListener("click", () => {
   document.querySelector("#cAiLinks .ai-link-row:last-child .ai-link-label")?.focus();
 });
 
-/* Conversor seguro de markdown simple -> HTML (para la Estructura de entregables) */
+/* Conversor seguro de markdown simple -> HTML (con soporte de tablas) */
+function mdInline(s) { return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); }
 function mdToHtml(md) {
   if (!md) return "";
   const lines = escapeHtml(md).split("\n");
-  let html = "", inList = false;
+  let html = "", i = 0, inList = false;
   const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
-  for (let line of lines) {
-    line = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  const isRow = (s) => /^\s*\|.*\|\s*$/.test(s);
+  const isSep = (s) => /^\s*\|?[\s:|-]+\|?\s*$/.test(s) && s.includes("-");
+  const cells = (s) => s.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+  while (i < lines.length) {
+    let line = lines[i];
+    // Tabla: fila de encabezado + línea separadora + filas
+    if (isRow(line) && i + 1 < lines.length && isSep(lines[i + 1])) {
+      closeList();
+      const header = cells(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && isRow(lines[i])) { rows.push(cells(lines[i])); i++; }
+      html += '<table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+      continue;
+    }
+    line = mdInline(line);
     if (/^### /.test(line)) { closeList(); html += `<h4>${line.slice(4)}</h4>`; }
     else if (/^## /.test(line)) { closeList(); html += `<h3>${line.slice(3)}</h3>`; }
     else if (/^# /.test(line)) { closeList(); html += `<h3>${line.slice(2)}</h3>`; }
@@ -3240,6 +3256,7 @@ function mdToHtml(md) {
     else if (/^-\s/.test(line)) { if (!inList) { html += "<ul>"; inList = true; } html += `<li>${line.slice(2)}</li>`; }
     else if (line.trim() === "") { closeList(); }
     else { closeList(); html += `<p>${line}</p>`; }
+    i++;
   }
   closeList();
   return html;
@@ -3470,4 +3487,26 @@ document.getElementById("dStructurePreviewBtn")?.addEventListener("click", () =>
   const src = document.getElementById("dStructure")?.value || "";
   const box = document.getElementById("dStructurePreview");
   if (box) box.innerHTML = src.trim() ? mdToHtml(src) : '<span class="field-hint">Nada que previsualizar aún.</span>';
+});
+
+/* Barra de formato del editor de estructura (inserta markdown en el textarea) */
+function mdInsert(kind) {
+  const ta = document.getElementById("dStructure");
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const sel = ta.value.slice(start, end);
+  let text = "", caret = null;
+  if (kind === "h") text = `## ${sel || "Título"}\n`;
+  else if (kind === "b") { text = `**${sel || "texto"}**`; }
+  else if (kind === "ul") text = `- ${sel || "elemento"}\n`;
+  else if (kind === "table") {
+    text = `\n| Escena | Descripción | Duración |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n`;
+  }
+  ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+  const pos = start + (caret != null ? caret : text.length);
+  ta.focus(); ta.setSelectionRange(pos, pos);
+}
+document.getElementById("dStructureToolbar")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-md]");
+  if (b) { e.preventDefault(); mdInsert(b.dataset.md); }
 });

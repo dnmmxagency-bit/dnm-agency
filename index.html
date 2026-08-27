@@ -1019,8 +1019,14 @@
         <details class="collapse" id="dStructureBox">
           <summary>Estructura / guion</summary>
           <div class="collapse__body">
-            <p class="field-hint" style="margin:0 0 8px">Escribe aquí los slides, guion, caption y CTA. Formato simple: <code>##</code> para títulos, <code>**negrita**</code>, <code>-</code> para listas. Se ve ordenado en la tarjeta del entregable.</p>
-            <textarea class="input" id="dStructure" rows="12" placeholder="## Carrusel 1&#10;**Slide 1 — Gancho**&#10;Texto del gancho…&#10;**Caption:**&#10;…&#10;**CTA:** …"></textarea>
+            <p class="field-hint" style="margin:0 0 8px">Escribe aquí los slides, guion, caption y CTA. Usa los botones para dar formato. Se ve ordenado en la tarjeta del entregable.</p>
+            <div class="md-toolbar" id="dStructureToolbar">
+              <button type="button" class="btn btn--ghost btn--sm" data-md="h">H Título</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-md="b"><strong>B</strong></button>
+              <button type="button" class="btn btn--ghost btn--sm" data-md="ul">• Lista</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-md="table">▦ Tabla</button>
+            </div>
+            <textarea class="input" id="dStructure" rows="12" placeholder="## Carrusel 1&#10;**Slide 1 — Gancho**&#10;Texto del gancho…"></textarea>
             <div class="note-add__row" style="margin-top:8px">
               <button class="btn btn--ghost btn--sm" id="dStructurePreviewBtn" type="button">Vista previa</button>
             </div>
