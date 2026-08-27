@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v77";
+const APP_VERSION = "v78";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2575,6 +2575,20 @@ document.getElementById("btnRefreshShared")?.addEventListener("click", loadShare
    ============================================================ */
 let DELIVERABLES = [];
 let showArchivedDeliv = false;
+let delivClientFilter = "";
+
+function fillDelivClientFilter() {
+  const sel = document.getElementById("delivClientFilter");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los clientes</option>' +
+    CLIENTS.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  sel.value = cur;
+  if (!sel.dataset.wired) {
+    sel.dataset.wired = "1";
+    sel.onchange = () => { delivClientFilter = sel.value; renderDeliverables(); };
+  }
+}
 
 async function loadDeliverables() {
   try {
@@ -2586,17 +2600,35 @@ async function loadDeliverables() {
 function deliverablePieces(id) {
   return (typeof CONTENT !== "undefined" ? CONTENT : []).filter((c) => c.deliverable_id === id);
 }
+/* % de avance según la etapa (Estado) del pipeline */
+function stagePct(estado) {
+  if (!estado) return 0;
+  const e = estado.trim().toLowerCase();
+  if (PHASE_DONE.some((s) => s.toLowerCase() === e)) return 100;
+  const idx = PHASE_PIPELINE.findIndex((s) => s.toLowerCase() === e);
+  if (idx < 0) return 0;
+  return Math.min(100, Math.round((idx / 8) * 100)); // índice 8 = "Terminado"
+}
 function deliverableProgress(d) {
   const pieces = deliverablePieces(d.id);
-  const done = pieces.filter((c) => c.estatus === "Entregado").length;
-  const meta = Math.max(1, d.meta || 1);
-  return { done, meta, pct: Math.min(100, Math.round((done / meta) * 100)) };
+  if (pieces.length > 0) {
+    const done = pieces.filter((c) => c.estatus === "Entregado").length;
+    const meta = Math.max(1, d.meta || 1);
+    return { done, meta, pct: Math.min(100, Math.round((done / meta) * 100)), byStage: false };
+  }
+  // Sin piezas ligadas: avance según la etapa
+  return { done: 0, meta: Math.max(1, d.meta || 1), pct: stagePct(d.estado), byStage: true };
 }
 
 function renderDeliverables() {
   const box = $("#deliverablesList");
   if (!box) return;
   let list = DELIVERABLES.filter((d) => showArchivedDeliv ? d.status === "Archivado" : d.status !== "Archivado");
+  fillDelivClientFilter();
+  if (delivClientFilter) list = list.filter((d) => {
+    const ph = (typeof PHASES !== "undefined") ? PHASES.find((x) => x.id === d.phase_id) : null;
+    return (d.client_id || ph?.client_id) === delivClientFilter;
+  });
   if (!isAdmin()) list = list.filter(isMineItem); // privacidad: miembros ven solo sus entregables
   $("#deliverablesCount").textContent = `${list.length}`;
   $("#btnToggleArchivedDeliv").textContent = showArchivedDeliv ? "Ver activos" : "Ver archivados";
@@ -2609,7 +2641,7 @@ function renderDeliverables() {
   box.innerHTML = list.map((d) => {
     const ph = d.phase_id ? (typeof PHASES !== "undefined" ? PHASES.find((x) => x.id === d.phase_id) : null) : null;
     const cli = CLIENTS.find((c) => c.id === (d.client_id || ph?.client_id));
-    const { done, meta, pct } = deliverableProgress(d);
+    const { done, meta, pct, byStage } = deliverableProgress(d);
     const pieces = deliverablePieces(d.id);
     const piezasHtml = pieces.length
       ? pieces.map((p) => {
@@ -2626,7 +2658,7 @@ function renderDeliverables() {
       <div class="deliv-card__head">
         <div>
           <div class="deliv-card__name">${escapeHtml(d.name)}</div>
-          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(d.estado || "Por iniciar")}</span> · ${done}/${meta} entregadas${d.delivery_date ? " · entrega " + fmtDate(d.delivery_date) : ""}</div>
+          <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(d.estado || "Por iniciar")}</span>${byStage ? "" : ` · ${done}/${meta} entregadas`}${d.delivery_date ? " · entrega " + fmtDate(d.delivery_date) : ""}</div>
           ${assigneeMinis(d.assignee_ids)}
         </div>
         <div class="deliv-card__actions">
