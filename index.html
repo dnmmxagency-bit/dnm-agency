@@ -45,6 +45,15 @@
     <div class="splash__skip">Toca para entrar</div>
   </div>
 
+  <!-- Loader de datos (aparece al entrar si no hay copia local) -->
+  <div id="appLoader" class="app-loader hidden">
+    <div class="app-loader__box">
+      <img src="icons/isotipo-white.png" class="app-loader__iso" alt="DNM" />
+      <div class="app-loader__spin"></div>
+      <div class="app-loader__txt">Cargando tu información…</div>
+    </div>
+  </div>
+
   <!-- ============================================================
        PANTALLA DE ACCESO
        ============================================================ -->
@@ -82,7 +91,25 @@
 
       <div class="field">
         <label for="inPass">Contraseña</label>
-        <input class="input" type="password" id="inPass" autocomplete="current-password" placeholder="••••••••" />
+        <div class="pass-wrap">
+          <input class="input" type="password" id="inPass" autocomplete="current-password" placeholder="••••••••" />
+          <button type="button" class="pass-toggle" id="togglePass" aria-label="Mostrar contraseña" title="Mostrar/ocultar">
+            <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="eye-off hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19C5 19 1 12 1 12a19.6 19.6 0 0 1 5.1-5.9M9.9 4.2A10.9 10.9 0 0 1 12 5c7 0 11 7 11 7a19.4 19.4 0 0 1-2.2 3.2M1 1l22 22"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirmar contraseña: solo visible en registro -->
+      <div class="field hidden" id="fieldPass2">
+        <label for="inPass2">Confirmar contraseña</label>
+        <div class="pass-wrap">
+          <input class="input" type="password" id="inPass2" autocomplete="new-password" placeholder="••••••••" />
+          <button type="button" class="pass-toggle" id="togglePass2" aria-label="Mostrar contraseña" title="Mostrar/ocultar">
+            <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="eye-off hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19C5 19 1 12 1 12a19.6 19.6 0 0 1 5.1-5.9M9.9 4.2A10.9 10.9 0 0 1 12 5c7 0 11 7 11 7a19.4 19.4 0 0 1-2.2 3.2M1 1l22 22"/></svg>
+          </button>
+        </div>
       </div>
 
       <button class="btn btn--primary btn--block" id="btnAuth" type="button">

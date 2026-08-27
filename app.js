@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v71";
+const APP_VERSION = "v74";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -114,6 +114,7 @@ function setMode(next) {
   $("#tabLogin").classList.toggle("active", !isReg);
   $("#tabRegister").classList.toggle("active", isReg);
   $("#fieldName").classList.toggle("hidden", !isReg);
+  $("#fieldPass2").classList.toggle("hidden", !isReg);
   $("#authTitle").textContent = isReg ? "Crea tu cuenta" : "Inicia sesión";
   $("#authDesc").textContent  = isReg ? "Regístrate para colaborar en producción." : "Accede a tu tablero de producción.";
   $("#btnAuthLabel").textContent = isReg ? "Crear cuenta" : "Entrar";
@@ -134,6 +135,21 @@ $("#tabLogin").onclick = () => setMode("login");
 $("#tabRegister").onclick = () => setMode("register");
 bindSwitchLink();
 
+/* Ojito para ver/ocultar contraseña */
+function wirePassToggle(btnId, inputId) {
+  const btn = document.getElementById(btnId), inp = document.getElementById(inputId);
+  if (!btn || !inp) return;
+  btn.onclick = () => {
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    btn.querySelector(".eye-open")?.classList.toggle("hidden", show);
+    btn.querySelector(".eye-off")?.classList.toggle("hidden", !show);
+    inp.focus();
+  };
+}
+wirePassToggle("togglePass", "inPass");
+wirePassToggle("togglePass2", "inPass2");
+
 /* ============================================================
    Enviar formulario de acceso
    ============================================================ */
@@ -148,6 +164,7 @@ async function handleAuth() {
   if (!email || !pass) return showAuthMsg("Escribe tu correo y contraseña.");
   if (mode === "register" && !name) return showAuthMsg("Escribe tu nombre.");
   if (mode === "register" && pass.length < 6) return showAuthMsg("La contraseña debe tener al menos 6 caracteres.");
+  if (mode === "register" && pass !== $("#inPass2").value) return showAuthMsg("Las contraseñas no coinciden.");
 
   setBtnLoading(true);
   try {
@@ -189,6 +206,7 @@ btnAuth.onclick = handleAuth;
 });
 
 $("#btnLogout").onclick = async () => {
+  clearCache();
   await sb.auth.signOut();
   toast("Sesión cerrada");
 };
@@ -388,9 +406,67 @@ let phaseAssignees = [];
 let clientAssignees = [];
 
 /* ---- Carga inicial de datos al entrar ---- */
+/* ============================================================
+   CACHÉ LOCAL POR USUARIO (carga instantánea)
+   Guarda una copia de los datos en este dispositivo (localStorage),
+   por usuario. Se borra al cerrar sesión.
+   ============================================================ */
+const CACHE_PREFIX = "dnm-cache";
+function cacheKey() { return `${CACHE_PREFIX}:${currentProfile?.id || "anon"}`; }
+function saveCache() {
+  try {
+    if (!currentProfile) return;
+    const snap = { v: APP_VERSION, t: Date.now(),
+      CLIENTS, MEMBERS, TASKS, CONTENT, DELIVERABLES, RECORDINGS, PHASES, GUESTS, CLIENT_FILE_COUNT };
+    localStorage.setItem(cacheKey(), JSON.stringify(snap));
+  } catch (_) {}
+}
+function hydrateCache() {
+  try {
+    const raw = localStorage.getItem(cacheKey());
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.v !== APP_VERSION) return false; // ignora copias de versiones distintas
+    CLIENTS = s.CLIENTS || []; MEMBERS = s.MEMBERS || []; TASKS = s.TASKS || [];
+    CONTENT = s.CONTENT || []; DELIVERABLES = s.DELIVERABLES || []; RECORDINGS = s.RECORDINGS || [];
+    PHASES = s.PHASES || []; GUESTS = s.GUESTS || []; CLIENT_FILE_COUNT = s.CLIENT_FILE_COUNT || {};
+    return true;
+  } catch (_) { return false; }
+}
+function clearCache() { try { localStorage.removeItem(cacheKey()); } catch (_) {} }
+
+function showLoader(on) {
+  const el = document.getElementById("appLoader");
+  if (el) el.classList.toggle("hidden", !on);
+}
+
 async function bootData() {
-  await Promise.all([loadMembers(), loadClients(), loadClientFileCounts(), loadGuests(), loadContent(), loadDeliverables(), loadRecordings(), loadPhases()]);
-  await loadTasks();
+  // 1) Copia local instantánea (si existe): muestra datos de la última vez de inmediato
+  const hydrated = hydrateCache();
+  if (hydrated) {
+    renderBoard();
+    if (typeof renderContent === "function") renderContent();
+    if (typeof renderClients === "function") renderClients();
+  } else {
+    showLoader(true); // primera vez o tras cerrar sesión: muestra pantalla de carga
+  }
+
+  // 2) Trae lo esencial fresco (equipo, clientes, tareas) y pinta el Tablero
+  await Promise.all([loadMembers(), loadClients(), loadTasks()]);
+  renderBoard();
+  showLoader(false);
+  saveCache();
+
+  // 3) El resto en segundo plano — no bloquea la entrada
+  Promise.all([
+    loadClientFileCounts(), loadGuests(), loadContent(),
+    loadDeliverables(), loadRecordings(), loadPhases(),
+  ]).then(() => {
+    renderBoard();
+    if (typeof renderContent === "function") renderContent();
+    if (typeof renderClients === "function") renderClients();
+    saveCache();
+  }).catch(() => {});
 }
 
 async function loadMembers() {
