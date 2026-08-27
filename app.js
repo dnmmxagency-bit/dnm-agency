@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v79";
+const APP_VERSION = "v80";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1303,6 +1303,23 @@ function taskCountForClient(id) {
   return TASKS.filter((t) => t.client_id === id).length;
 }
 
+/* Avance del cliente = promedio del avance de sus entregables (directos o vía fase) */
+function clientDeliverables(clientId) {
+  return (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).filter((d) => {
+    if (d.status === "Archivado") return false;
+    const ph = (typeof PHASES !== "undefined") ? PHASES.find((x) => x.id === d.phase_id) : null;
+    return (d.client_id || ph?.client_id) === clientId;
+  });
+}
+function clientProgress(clientId) {
+  const dels = clientDeliverables(clientId);
+  if (!dels.length) return null;
+  const pcts = dels.map((d) => deliverableProgress(d).pct);
+  const pct = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+  const done = pcts.filter((x) => x >= 100).length;
+  return { pct, done, total: dels.length };
+}
+
 function renderClients() {
   const grid = $("#clientsGrid");
   let list = CLIENTS;
@@ -1342,6 +1359,7 @@ function renderClients() {
         ${typeShort ? `<span class="cchip">${escapeHtml(typeShort)}</span>` : ""}
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
+      ${(() => { const pr = clientProgress(c.id); return pr ? `<div class="ccard__prog"><div class="deliv-bar"><div class="deliv-bar__fill" style="width:${pr.pct}%"></div></div><div class="deliv-bar__label">${pr.pct}% · ${pr.done}/${pr.total} entregables</div></div>` : ""; })()}
       <div class="ccard__foot">
         <div class="ccard__badges">
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>

@@ -1382,3 +1382,7 @@ textarea.input { resize: vertical; min-height: 70px; }
 .phase-tab { flex: 0 0 auto; white-space: nowrap; padding: 8px 14px; background: var(--surface-2, #14130f); color: var(--text-dim, #b8b2a5); border: 1px solid var(--border, #2a2822); border-radius: 999px; font-size: 13px; cursor: pointer; transition: all .15s; }
 .phase-tab:hover { border-color: var(--amber, #C77826); color: #fff; }
 .phase-tab.active { background: var(--amber, #C77826); color: #0D0D0A; border-color: var(--amber, #C77826); font-weight: 600; }
+
+/* Barra de avance en tarjeta de cliente */
+.ccard__prog { margin: 10px 0 4px; }
+.ccard__prog .deliv-bar { margin: 0; }
