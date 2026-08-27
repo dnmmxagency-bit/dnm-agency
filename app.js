@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v69";
+const APP_VERSION = "v70";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -425,6 +425,14 @@ function isMyTask(t, me) {
   if (!me) return false;
   if (t.owner_id === me) return true;
   return asgIds(t).includes(String(me));
+}
+
+/* Pertenencia para Fases/Entregables/Clientes (privacidad por responsable) */
+function isMineItem(x) {
+  const me = currentProfile?.id;
+  if (!me) return false;
+  if (x.owner_id === me) return true;
+  return asgIds(x).includes(String(me));
 }
 
 /* ---- Utilidades de presentación ---- */
@@ -1208,6 +1216,7 @@ function renderClients() {
   let list = CLIENTS;
   if (clientFilter === "activos") list = CLIENTS.filter((c) => (c.status || "Activo") === "Activo");
   else if (clientFilter === "prospectos") list = CLIENTS.filter((c) => c.status === "Prospecto");
+  if (!isAdmin()) list = list.filter(isMineItem); // privacidad: miembros ven solo sus clientes
 
   $("#clientCount").textContent = `${list.length} ${list.length === 1 ? "cliente" : "clientes"}`;
 
@@ -2496,6 +2505,7 @@ function renderDeliverables() {
   const box = $("#deliverablesList");
   if (!box) return;
   let list = DELIVERABLES.filter((d) => showArchivedDeliv ? d.status === "Archivado" : d.status !== "Archivado");
+  if (!isAdmin()) list = list.filter(isMineItem); // privacidad: miembros ven solo sus entregables
   $("#deliverablesCount").textContent = `${list.length}`;
   $("#btnToggleArchivedDeliv").textContent = showArchivedDeliv ? "Ver activos" : "Ver archivados";
 
@@ -2753,6 +2763,7 @@ function renderPhases() {
   fillPhaseClientFilter();
   let list = PHASES.filter((p) => showArchivedPhase ? p.status === "Archivada" : p.status !== "Archivada");
   if (phaseClientFilter) list = list.filter((p) => p.client_id === phaseClientFilter);
+  if (!isAdmin()) list = list.filter(isMineItem); // privacidad: miembros ven solo sus fases
   $("#phasesCount").textContent = `${list.length}`;
   $("#btnToggleArchivedPhase").textContent = showArchivedPhase ? "Ver activas" : "Ver archivadas";
 
