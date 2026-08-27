@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v81";
+const APP_VERSION = "v82";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1735,6 +1735,26 @@ let contentFilterEstado = "";
 let contentClientFilter = "";
 let contentMine = false;
 
+function renderContentTabs() {
+  const bar = document.getElementById("contentTabs");
+  if (!bar) return;
+  // clientes que tienen piezas no archivadas
+  const ids = [...new Set(CONTENT.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus)).map((c) => c.client_id).filter(Boolean))];
+  const cls = ids.map((id) => CLIENTS.find((c) => c.id === id)).filter(Boolean).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  if (!cls.length) { bar.innerHTML = ""; return; }
+  const tabs = [`<button class="phase-tab ${contentClientFilter === "" ? "active" : ""}" data-tab="">Todas</button>`]
+    .concat(cls.map((c) => `<button class="phase-tab ${contentClientFilter === c.id ? "active" : ""}" data-tab="${c.id}">${escapeHtml(c.name)}</button>`));
+  bar.innerHTML = tabs.join("");
+  bar.querySelectorAll(".phase-tab").forEach((b) => {
+    b.onclick = () => {
+      contentClientFilter = b.dataset.tab;
+      const sel = document.getElementById("contentClientFilter");
+      if (sel) sel.value = contentClientFilter; // sincroniza con el desplegable
+      renderContent();
+    };
+  });
+}
+
 async function loadGuests() {
   const { data, error } = await sb.from("guests").select("*").order("name");
   GUESTS = error ? [] : (data || []);
@@ -1790,6 +1810,7 @@ function fillContentFilter() {
 /* ---- Render de piezas ---- */
 function renderContent() {
   fillContentFilter();
+  renderContentTabs();
   const box = $("#contentList");
   let list = CONTENT;
   if (contentFilterEstado) list = list.filter((c) => c.estado === contentFilterEstado);
