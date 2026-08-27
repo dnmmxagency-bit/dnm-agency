@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v95";
+const APP_VERSION = "v97";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -288,6 +288,7 @@ function switchView(view) {
   if (view === "entregables") { renderDeliverables(); }
   if (view === "fases") { renderPhases(); }
   if (view === "chat") { enterChat(); } else { stopChatPoll(); }
+  if (view === "documentos" && typeof renderDocuments === "function") renderDocuments();
   if (view === "usuarios") {
     if (!isAdmin()) { switchView("tablero"); return; }
     renderUsuarios();
@@ -427,7 +428,7 @@ function saveCache() {
   try {
     if (!currentProfile) return;
     const snap = { v: APP_VERSION, t: Date.now(),
-      CLIENTS, MEMBERS, TASKS, CONTENT, DELIVERABLES, RECORDINGS, PHASES, GUESTS, CLIENT_FILE_COUNT };
+      CLIENTS, MEMBERS, TASKS, CONTENT, DELIVERABLES, RECORDINGS, PHASES, GUESTS, CLIENT_FILE_COUNT, DOCUMENTS };
     localStorage.setItem(cacheKey(), JSON.stringify(snap));
   } catch (_) {}
 }
@@ -440,6 +441,7 @@ function hydrateCache() {
     CLIENTS = s.CLIENTS || []; MEMBERS = s.MEMBERS || []; TASKS = s.TASKS || [];
     CONTENT = s.CONTENT || []; DELIVERABLES = s.DELIVERABLES || []; RECORDINGS = s.RECORDINGS || [];
     PHASES = s.PHASES || []; GUESTS = s.GUESTS || []; CLIENT_FILE_COUNT = s.CLIENT_FILE_COUNT || {};
+    DOCUMENTS = s.DOCUMENTS || [];
     return true;
   } catch (_) { return false; }
 }
@@ -459,6 +461,7 @@ function renderAll() {
   safe(typeof renderDeliverables === "function" ? renderDeliverables : null);
   safe(typeof renderPhases === "function" ? renderPhases : null);
   safe(typeof renderGuests === "function" ? renderGuests : null);
+  safe(typeof renderDocuments === "function" ? renderDocuments : null);
   safe(typeof rerenderCalendars === "function" ? rerenderCalendars : null);
   try { if (typeof calShared !== "undefined" && calShared) calShared.render(); } catch (_) {}
 }
@@ -481,7 +484,7 @@ async function bootData() {
   // 3) El resto en segundo plano — y al terminar, repinta TODAS las secciones
   Promise.all([
     loadClientFileCounts(), loadGuests(), loadContent(),
-    loadDeliverables(), loadRecordings(), loadPhases(),
+    loadDeliverables(), loadRecordings(), loadPhases(), loadDocuments(),
   ]).then(() => {
     renderAll();
     saveCache();
@@ -3511,25 +3514,28 @@ document.getElementById("dStructure")?.addEventListener("input", () => {
 });
 
 /* Barra de formato del editor de estructura (inserta markdown en el textarea) */
-function mdInsert(kind) {
-  const ta = document.getElementById("dStructure");
+function mdInsert(kind, taId) {
+  const ta = document.getElementById(taId || "dStructure");
   if (!ta) return;
   const start = ta.selectionStart, end = ta.selectionEnd;
   const sel = ta.value.slice(start, end);
-  let text = "", caret = null;
+  let text = "";
   if (kind === "h") text = `## ${sel || "Título"}\n`;
   else if (kind === "b") { text = `**${sel || "texto"}**`; }
   else if (kind === "ul") text = `- ${sel || "elemento"}\n`;
-  else if (kind === "table") {
-    text = `\n| Escena | Descripción | Duración |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n`;
-  }
+  else if (kind === "table") text = `\n| Escena | Descripción | Duración |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n`;
   ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-  const pos = start + (caret != null ? caret : text.length);
+  const pos = start + text.length;
   ta.focus(); ta.setSelectionRange(pos, pos);
+  ta.dispatchEvent(new Event("input"));
 }
 document.getElementById("dStructureToolbar")?.addEventListener("click", (e) => {
   const b = e.target.closest("[data-md]");
-  if (b) { e.preventDefault(); mdInsert(b.dataset.md); }
+  if (b) { e.preventDefault(); mdInsert(b.dataset.md, "dStructure"); }
+});
+document.getElementById("docToolbar")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-md]");
+  if (b) { e.preventDefault(); mdInsert(b.dataset.md, "docBody"); }
 });
 
 /* ============================================================
@@ -3632,3 +3638,153 @@ function extrasToHtml(extras) {
   });
   return html;
 }
+
+/* ============================================================
+   MÓDULO: DOCUMENTOS por cliente
+   ============================================================ */
+const DOC_TYPES = ["Diagnóstico", "Estrategia", "Brand System", "Nota de reunión", "Guion", "Investigación", "Otro"];
+let DOCUMENTS = [];
+let docClientTab = ""; // "" = todos, o client_id
+let editingDoc = null;
+
+async function loadDocuments() {
+  try {
+    const { data, error } = await sb.from("documents").select("*").order("updated_at", { ascending: false });
+    DOCUMENTS = error ? [] : (data || []);
+  } catch (_) { DOCUMENTS = []; }
+}
+
+function docVisible(d) {
+  if (isAdmin()) return true;
+  const me = currentProfile?.id;
+  if (d.owner_id === me) return true;
+  const cli = CLIENTS.find((c) => c.id === d.client_id);
+  return !!cli && asgIds(cli).includes(String(me)); // responsable del cliente
+}
+
+function docClientsWithAccess() {
+  let cls = CLIENTS.slice();
+  if (!isAdmin()) cls = cls.filter(isMineItem);
+  return cls.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+function renderDocTabs() {
+  const bar = document.getElementById("docTabs");
+  if (!bar) return;
+  const cls = docClientsWithAccess();
+  const tabs = [`<button class="phase-tab ${docClientTab === "" ? "active" : ""}" data-ch="">Todos</button>`]
+    .concat(cls.map((c) => `<button class="phase-tab ${docClientTab === c.id ? "active" : ""}" data-ch="${c.id}">${escapeHtml(c.name)}</button>`));
+  bar.innerHTML = tabs.join("");
+  bar.querySelectorAll(".phase-tab").forEach((b) => b.onclick = () => { docClientTab = b.dataset.ch; renderDocuments(); });
+}
+
+function renderDocuments() {
+  const box = document.getElementById("docsList");
+  if (!box) return;
+  renderDocTabs();
+  let list = DOCUMENTS.filter(docVisible);
+  if (docClientTab) list = list.filter((d) => d.client_id === docClientTab);
+  const cnt = document.getElementById("docsCount"); if (cnt) cnt.textContent = `${list.length}`;
+  if (!list.length) { box.innerHTML = '<div class="field-hint" style="padding:14px">Aún no hay documentos. Crea el primero con “+ Nuevo documento”.</div>'; return; }
+  box.innerHTML = list.map((d) => {
+    const cli = CLIENTS.find((c) => c.id === d.client_id);
+    return `<div class="doc-card" data-doc="${d.id}">
+      <div class="doc-card__main">
+        <div class="doc-card__title">${escapeHtml(d.title || "(sin título)")}</div>
+        <div class="doc-card__meta">${d.doc_type ? `<span class="chip">${escapeHtml(d.doc_type)}</span> · ` : ""}${cli ? escapeHtml(cli.name) + " · " : ""}${fmtDateTime(d.updated_at)}</div>
+      </div>
+      <div class="doc-card__actions">
+        <button class="btn btn--ghost btn--sm" data-doc-view="${d.id}" type="button">📖 Ver</button>
+        <button class="btn btn--ghost btn--sm" data-doc-edit="${d.id}" type="button">Editar</button>
+      </div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-doc-view]").forEach((b) => b.onclick = () => openDocProd(b.dataset.docView));
+  box.querySelectorAll("[data-doc-edit]").forEach((b) => b.onclick = () => {
+    const d = DOCUMENTS.find((x) => x.id === b.dataset.docEdit); if (d) openDocModal(d);
+  });
+}
+
+function openDocModal(doc) {
+  editingDoc = doc || null;
+  document.getElementById("docModalTitle").textContent = doc ? "Editar documento" : "Nuevo documento";
+  document.getElementById("docMsg").classList.add("hidden");
+  document.getElementById("docTitle").value = doc?.title || "";
+  // clientes (los que puede ver)
+  const selC = document.getElementById("docClient");
+  selC.innerHTML = docClientsWithAccess().map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  selC.value = doc?.client_id || (docClientTab || selC.querySelector("option")?.value || "");
+  // tipos
+  const selT = document.getElementById("docType");
+  selT.innerHTML = DOC_TYPES.map((t) => `<option>${t}</option>`).join("");
+  selT.value = doc?.doc_type || "Diagnóstico";
+  document.getElementById("docBody").value = doc?.body || "";
+  document.getElementById("docDelete").classList.toggle("hidden", !doc);
+  updateDocPreview();
+  document.getElementById("docOverlay").classList.add("open");
+}
+
+function updateDocPreview() {
+  const src = document.getElementById("docBody")?.value || "";
+  const box = document.getElementById("docPreview");
+  if (box) box.innerHTML = src.trim() ? mdToHtml(src) : '<span class="field-hint">Aquí verás el formato…</span>';
+}
+let _docPrevTimer = null;
+document.getElementById("docBody")?.addEventListener("input", () => {
+  clearTimeout(_docPrevTimer); _docPrevTimer = setTimeout(updateDocPreview, 250);
+});
+
+async function saveDoc() {
+  const title = document.getElementById("docTitle").value.trim();
+  if (!title) { showMsg("#docMsg", "Escribe un título."); return; }
+  const payload = {
+    title,
+    client_id: document.getElementById("docClient").value || null,
+    doc_type: document.getElementById("docType").value || null,
+    body: document.getElementById("docBody").value || null,
+    updated_at: new Date().toISOString(),
+  };
+  const btn = document.getElementById("docSave"); btn.disabled = true;
+  document.getElementById("docSaveLabel").innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingDoc) ({ error } = await sb.from("documents").update(payload).eq("id", editingDoc.id));
+  else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("documents").insert(payload)); }
+  btn.disabled = false; document.getElementById("docSaveLabel").textContent = "Guardar";
+  if (error) { showMsg("#docMsg", "No se pudo guardar."); return; }
+  document.getElementById("docOverlay").classList.remove("open");
+  await loadDocuments(); renderDocuments();
+  toast("Documento guardado");
+}
+
+async function deleteDoc() {
+  if (!editingDoc) return;
+  if (!confirm("¿Eliminar este documento?")) return;
+  const { error } = await sb.from("documents").delete().eq("id", editingDoc.id);
+  if (error) { showMsg("#docMsg", "No se pudo eliminar."); return; }
+  document.getElementById("docOverlay").classList.remove("open");
+  await loadDocuments(); renderDocuments();
+  toast("Documento eliminado");
+}
+
+/* Ver documento en la ficha blanca (reutiliza #prodOverlay) */
+function openDocProd(id) {
+  const d = DOCUMENTS.find((x) => x.id === id); if (!d) return;
+  const cli = CLIENTS.find((c) => c.id === d.client_id);
+  const bits = [];
+  if (d.doc_type) bits.push(escapeHtml(d.doc_type));
+  if (cli) bits.push(escapeHtml(cli.name));
+  bits.push(fmtDateTime(d.updated_at));
+  const head = `<div class="prod-head"><h2 class="prod-title">${escapeHtml(d.title || "(sin título)")}</h2><div class="prod-meta">${bits.join(" · ")}</div></div>`;
+  const inner = d.body ? mdToHtml(d.body) : '<p class="field-hint">Documento vacío.</p>';
+  document.getElementById("prodBody").innerHTML = head + `<div class="md prod-md">${inner}</div>` +
+    `<div class="prod-actions"><button class="btn btn--ghost btn--sm" id="prodPrintBottom2" type="button">🖨 Imprimir / PDF</button></div>`;
+  document.getElementById("prodOverlay").classList.add("open");
+  document.getElementById("prodPrintBottom2")?.addEventListener("click", () => window.print());
+}
+
+document.getElementById("btnNewDoc")?.addEventListener("click", () => openDocModal(null));
+document.getElementById("docSave")?.addEventListener("click", saveDoc);
+document.getElementById("docDelete")?.addEventListener("click", deleteDoc);
+document.getElementById("docCancel")?.addEventListener("click", () => document.getElementById("docOverlay").classList.remove("open"));
+document.getElementById("docClose")?.addEventListener("click", () => document.getElementById("docOverlay").classList.remove("open"));
+document.getElementById("docOverlay")?.addEventListener("click", (e) => { if (e.target.id === "docOverlay") e.currentTarget.classList.remove("open"); });

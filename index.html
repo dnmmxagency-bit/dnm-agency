@@ -193,6 +193,11 @@
           Chat
         </button>
 
+        <button class="nav__item" data-view="documentos" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+          Documentos
+        </button>
+
         <div class="nav__group-label" data-admin-only>Administración</div>
         <button class="nav__item" data-view="usuarios" data-admin-only type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 2-2"/></svg>
@@ -359,6 +364,22 @@
           </div>
         </section>
 
+        <!-- VISTA: Documentos por cliente -->
+        <section class="view" id="view-documentos">
+          <div class="page-head">
+            <div class="eyebrow">Conocimiento</div>
+            <h2 class="page-title">Documentos</h2>
+            <p class="page-desc">Diagnósticos, estrategia, brand systems y notas — por cliente.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn--primary" id="btnNewDoc" type="button">+ Nuevo documento</button>
+            <div class="toolbar__spacer"></div>
+            <span class="count-pill" id="docsCount">0</span>
+          </div>
+          <div class="phase-tabs" id="docTabs"></div>
+          <div id="docsList"></div>
+        </section>
+
         <!-- VISTA: Calendario compartido (espejo de Notion, solo lectura) -->
         <section class="view" id="view-compartido">
           <div class="page-head">
@@ -465,6 +486,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat
         </button>
+        <button class="bottomnav__item" data-view="documentos" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          Docs
+        </button>
         <button class="bottomnav__item" data-view="clientes" data-admin-only type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           Clientes
@@ -472,6 +497,51 @@
       </div>
     </nav>
 
+  </div>
+
+  <!-- Modal: editor de documento -->
+  <div class="overlay" id="docOverlay">
+    <div class="modal modal--wide frame">
+      <div class="modal__head">
+        <h3 class="modal__title" id="docModalTitle">Nuevo documento</h3>
+        <button class="modal__x" id="docClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="msg hidden" id="docMsg"></div>
+        <div class="field">
+          <label for="docTitle">Título</label>
+          <input class="input" type="text" id="docTitle" placeholder="Ej. Diagnóstico estratégico — Dr. Pepe" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="docClient">Cliente</label>
+            <select class="input" id="docClient"></select>
+          </div>
+          <div class="field">
+            <label for="docType">Tipo</label>
+            <select class="input" id="docType"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Contenido</label>
+          <div class="md-toolbar" id="docToolbar">
+            <button type="button" class="btn btn--ghost btn--sm" data-md="h">H Título</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-md="b"><strong>B</strong></button>
+            <button type="button" class="btn btn--ghost btn--sm" data-md="ul">• Lista</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-md="table">▦ Tabla</button>
+          </div>
+          <textarea class="input" id="docBody" rows="14" placeholder="Escribe o pega aquí (acepta tablas de Claude)…"></textarea>
+          <div class="field-hint" style="margin:12px 0 4px">Vista previa:</div>
+          <div class="md" id="docPreview"></div>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--danger btn--sm hidden" id="docDelete" type="button">Eliminar</button>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="docCancel" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="docSave" type="button"><span id="docSaveLabel">Guardar</span></button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Ficha de producción (lectura cómoda) -->

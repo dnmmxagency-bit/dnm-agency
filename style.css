@@ -1514,3 +1514,10 @@ textarea.input { resize: vertical; min-height: 70px; }
   #prodBody .md-table td, #prodBody .md-table th { font-size: 10px !important; padding: 4px 5px !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
   @page { size: landscape; margin: 12mm; }
 }
+
+/* ===== Documentos ===== */
+.doc-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border,#2a2822); background: var(--surface-2,#14130f); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.doc-card__title { font-weight: 600; color: #fff; margin-bottom: 4px; }
+.doc-card__meta { font-size: 12.5px; color: var(--text-dim,#b8b2a5); }
+.doc-card__actions { display: flex; gap: 6px; flex: 0 0 auto; }
+@media (max-width: 560px) { .doc-card { flex-direction: column; align-items: stretch; } .doc-card__actions { justify-content: flex-end; } }
