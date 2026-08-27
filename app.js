@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v94";
+const APP_VERSION = "v95";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3249,8 +3249,8 @@ function mdToHtml(md) {
       i += 2;
       const rows = [];
       while (i < lines.length && isRow(lines[i])) { rows.push(cells(lines[i])); i++; }
-      html += '<table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
-        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+      html += '<div class="md-tablewrap"><table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table></div>";
       continue;
     }
     // Tabla PEGADA de una tabla ya renderizada (celdas separadas por tabulador)
@@ -3259,8 +3259,8 @@ function mdToHtml(md) {
       const block = []; let j = i;
       while (j < lines.length && lines[j].includes("\t")) { block.push(lines[j].split("\t").map((c) => c.trim())); j++; }
       const header = block[0], rows = block.slice(1);
-      html += '<table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
-        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+      html += '<div class="md-tablewrap"><table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table></div>";
       i = j; continue;
     }
     line = mdInline(line);

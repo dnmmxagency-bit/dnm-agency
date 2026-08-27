@@ -1499,3 +1499,18 @@ textarea.input { resize: vertical; min-height: 70px; }
 .prod-img { max-width: 100%; border-radius: 8px; }
 .prod-actions { margin-top: 20px; text-align: right; }
 #prodBody .prod-extra h4 { color: #111; }
+
+/* Tablas grandes: se ajustan y permiten scroll horizontal si no caben */
+.md-tablewrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 10px 0; }
+.md-tablewrap .md-table { margin: 0; table-layout: auto; }
+.md-table td, .md-table th { word-break: break-word; }
+/* En pantalla, comprimir para intentar que quepa */
+#prodBody .md-table { width: 100%; }
+#prodBody .md-table td, #prodBody .md-table th { font-size: 12.5px; padding: 5px 8px; }
+/* En impresión/PDF: que la tabla se ajuste a la hoja y no se corte */
+@media print {
+  .md-tablewrap { overflow: visible !important; }
+  #prodBody .md-table { width: 100% !important; table-layout: fixed !important; }
+  #prodBody .md-table td, #prodBody .md-table th { font-size: 10px !important; padding: 4px 5px !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+  @page { size: landscape; margin: 12mm; }
+}
