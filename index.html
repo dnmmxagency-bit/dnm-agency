@@ -706,6 +706,19 @@
         </div>
           </div>
         </details>
+        <details class="collapse">
+          <summary>Adjuntos</summary>
+          <div class="collapse__body">
+            <label class="btn btn--ghost btn--sm" style="cursor:pointer;display:inline-flex;align-items:center;margin-bottom:8px">+ Archivo
+              <input type="file" id="tAddFile" hidden />
+            </label>
+            <div id="tAttachments"></div>
+          </div>
+        </details>
+        <details class="collapse">
+          <summary>Comentarios</summary>
+          <div class="collapse__body" id="taskComments"></div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger btn--sm hidden" id="btnDeleteTask" type="button">Eliminar</button>
@@ -896,6 +909,10 @@
             Abrir brief de arranque (en la app)
           </button>
         </div>
+        <details class="collapse">
+          <summary>Comentarios</summary>
+          <div class="collapse__body" id="clientComments"></div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger btn--sm hidden" id="btnDeleteClient" type="button">Eliminar</button>
@@ -1127,6 +1144,10 @@
             <div id="dExtras"></div>
           </div>
         </details>
+        <details class="collapse">
+          <summary>Comentarios</summary>
+          <div class="collapse__body" id="delivComments"></div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>
@@ -1174,6 +1195,10 @@
           <label>Responsables</label>
           <div class="people" id="phPeople"><div class="people__empty">Cargando equipo…</div></div>
         </div>
+        <details class="collapse">
+          <summary>Comentarios</summary>
+          <div class="collapse__body" id="phaseComments"></div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger hidden" id="btnDeletePhase" type="button">Eliminar</button>

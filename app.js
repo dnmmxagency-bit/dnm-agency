@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v97";
+const APP_VERSION = "v98";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -951,6 +951,10 @@ function openTaskModal(task, prefill, context) {
   renderTaskNotes();
   renderTaskCorr();
   renderTimeSection();
+  // Adjuntos (Módulo 5) + Comentarios (Módulo 4)
+  taskAttachments = Array.isArray(task?.attachments) ? JSON.parse(JSON.stringify(task.attachments)) : [];
+  renderTaskAttachments();
+  mountComments("task", task?.id, "taskComments");
 
   // Prefill al crear desde el calendario (fecha y/o etapa)
   if (!task && prefill) {
@@ -1000,6 +1004,7 @@ $("#btnSaveTask").onclick = async () => {
     assignee_ids,
     notes: taskNotes,
     corrections: taskCorrections,
+    attachments: taskAttachments,
     closed_at: closedAtFor($("#tEstado").value, editingTask?.closed_at || null),
     updated_at: new Date().toISOString(),
   };
@@ -1406,6 +1411,7 @@ function openClientModal(client) {
   // Enlaces rápidos (IAs)
   clientAiLinks = (client && Array.isArray(client.ai_links)) ? client.ai_links.map((l) => ({ label: l.label || "", url: l.url || "" })) : [];
   renderAiLinksEditor();
+  mountComments("client", client?.id, "clientComments");
   // Link del brief en Notion
   $("#cBriefUrl").value = client?.brief_url || "";
   updateBriefNotionBtn();
@@ -2782,6 +2788,7 @@ function openDeliverableModal(item) {
   // Material adicional (cajas de texto + archivos)
   delivExtras = (item && Array.isArray(item.extras)) ? JSON.parse(JSON.stringify(item.extras)) : [];
   renderDelivExtras();
+  mountComments("deliverable", item?.id, "delivComments");
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -3069,6 +3076,7 @@ function openPhaseModal(item) {
   phaseAssignees = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
   makeMultiSelect($("#phPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), phaseAssignees,
     { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
+  mountComments("phase", item?.id, "phaseComments");
   $("#btnDeletePhase").classList.toggle("hidden", !item);
   $("#btnArchivePhase").classList.toggle("hidden", !item || item.status === "Archivada");
   phaseOverlay.classList.add("open");
@@ -3788,3 +3796,68 @@ document.getElementById("docDelete")?.addEventListener("click", deleteDoc);
 document.getElementById("docCancel")?.addEventListener("click", () => document.getElementById("docOverlay").classList.remove("open"));
 document.getElementById("docClose")?.addEventListener("click", () => document.getElementById("docOverlay").classList.remove("open"));
 document.getElementById("docOverlay")?.addEventListener("click", (e) => { if (e.target.id === "docOverlay") e.currentTarget.classList.remove("open"); });
+
+/* ============================================================
+   MÓDULO 4: COMENTARIOS (genérico para cualquier elemento)
+   ============================================================ */
+async function mountComments(entityType, entityId, containerId) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  if (!entityId) { box.innerHTML = '<div class="field-hint">Guarda primero para poder comentar.</div>'; return; }
+  box.innerHTML = `<div class="cmt-list">Cargando…</div>
+    <div class="cmt-add">
+      <textarea class="input cmt-input" rows="2" placeholder="Escribe un comentario…"></textarea>
+      <button class="btn btn--ghost btn--sm cmt-send" type="button">Comentar</button>
+    </div>`;
+  const listEl = box.querySelector(".cmt-list");
+  const load = async () => {
+    const { data } = await sb.from("comments").select("*")
+      .eq("entity_type", entityType).eq("entity_id", entityId)
+      .order("created_at", { ascending: true });
+    const list = data || [];
+    listEl.innerHTML = list.length ? list.map((c) => `<div class="cmt">
+      <div class="cmt-meta"><span class="cmt-author">${escapeHtml(memberName(c.author_id))}</span> · ${escapeHtml(fmtDateTime(c.created_at))}${c.author_id === currentProfile?.id ? ` · <button class="cmt-del" data-id="${c.id}" type="button">eliminar</button>` : ""}</div>
+      <div class="cmt-body">${escapeHtml(c.body || "").replace(/\n/g, "<br>")}</div>
+    </div>`).join("") : '<div class="field-hint">Sin comentarios aún.</div>';
+    listEl.querySelectorAll(".cmt-del").forEach((b) => b.onclick = async () => {
+      await sb.from("comments").delete().eq("id", b.dataset.id); load();
+    });
+  };
+  await load();
+  box.querySelector(".cmt-send").onclick = async () => {
+    const ta = box.querySelector(".cmt-input"); const body = (ta.value || "").trim();
+    if (!body) return;
+    const { error } = await sb.from("comments").insert({ author_id: currentProfile.id, entity_type: entityType, entity_id: entityId, body });
+    if (!error) { ta.value = ""; load(); } else { toast("No se pudo comentar"); }
+  };
+}
+
+/* ============================================================
+   MÓDULO 5: ADJUNTOS EN TAREAS
+   ============================================================ */
+let taskAttachments = [];
+function renderTaskAttachments() {
+  const box = document.getElementById("tAttachments");
+  if (!box) return;
+  if (!taskAttachments.length) { box.innerHTML = '<div class="field-hint">Sin adjuntos.</div>'; return; }
+  box.innerHTML = taskAttachments.map((a, i) => `<div class="extra-file">
+    <span class="extra-file__name">📎 ${escapeHtml(a.name || "archivo")}</span>
+    <a class="btn btn--ghost btn--sm" href="${escapeHtml(a.url)}" target="_blank" rel="noopener">Abrir</a>
+    <button class="btn btn--ghost btn--sm" data-ta-del="${i}" type="button">✕</button>
+  </div>`).join("");
+  box.querySelectorAll("[data-ta-del]").forEach((b) => b.onclick = () => { taskAttachments.splice(+b.dataset.taDel, 1); renderTaskAttachments(); });
+}
+document.getElementById("tAddFile")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0]; if (!file) return;
+  try {
+    const path = `${currentProfile.id}/${Date.now()}-${file.name}`;
+    const { error } = await sb.storage.from("deliverable-files").upload(path, file, { upsert: false });
+    if (error) { toast("No se pudo subir"); }
+    else {
+      const { data: pub } = sb.storage.from("deliverable-files").getPublicUrl(path);
+      taskAttachments.push({ name: file.name, url: pub.publicUrl });
+      renderTaskAttachments(); toast("Archivo adjuntado");
+    }
+  } catch (_) { toast("Error al subir"); }
+  e.target.value = "";
+});

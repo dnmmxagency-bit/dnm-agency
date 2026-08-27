@@ -1521,3 +1521,13 @@ textarea.input { resize: vertical; min-height: 70px; }
 .doc-card__meta { font-size: 12.5px; color: var(--text-dim,#b8b2a5); }
 .doc-card__actions { display: flex; gap: 6px; flex: 0 0 auto; }
 @media (max-width: 560px) { .doc-card { flex-direction: column; align-items: stretch; } .doc-card__actions { justify-content: flex-end; } }
+
+/* ===== Comentarios ===== */
+.cmt-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.cmt { border: 1px solid var(--border,#2a2822); border-radius: 8px; padding: 8px 10px; background: var(--surface,#0d0d0a); }
+.cmt-meta { font-size: 11px; color: var(--text-faint,#8a8578); margin-bottom: 3px; }
+.cmt-author { color: var(--amber,#C77826); font-weight: 600; }
+.cmt-body { color: var(--text,#e8e4da); font-size: 14px; line-height: 1.45; word-break: break-word; }
+.cmt-del { background: none; border: 0; color: var(--text-faint,#8a8578); cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0; }
+.cmt-add { display: flex; gap: 8px; align-items: flex-end; }
+.cmt-add .cmt-input { flex: 1 1 auto; resize: vertical; }
