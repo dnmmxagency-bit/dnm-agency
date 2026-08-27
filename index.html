@@ -142,6 +142,7 @@
           <div class="topbar__role" id="userRole">member</div>
         </div>
         <div class="avatar" id="userAvatar">–</div>
+        <button class="btn btn--ghost btn--sm" id="btnSyncNotion" data-admin-only type="button" title="Sincronizar con Notion">⟳ Sincronizar</button>
         <button class="btn btn--ghost btn--sm" id="btnLogout" type="button" title="Cerrar sesión">Salir</button>
       </div>
     </header>
@@ -471,6 +472,25 @@
       </div>
     </nav>
 
+  </div>
+
+  <!-- Modal: Sincronizar con Notion -->
+  <div class="overlay" id="syncOverlay">
+    <div class="modal frame">
+      <div class="modal__head">
+        <h3 class="modal__title">Sincronizar con Notion</h3>
+        <button class="modal__x" id="syncModalClose" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="page-desc" style="margin-top:0">Trae los cambios de Notion cuando lo necesites. <strong>Hazlo de uno en uno</strong> para no saturar la base. Si un nombre de función no coincide, edítalo (se guarda en este dispositivo).</p>
+        <div id="syncRows"></div>
+        <div id="syncStatus" class="msg hidden" style="margin-top:10px"></div>
+      </div>
+      <div class="modal__foot">
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--ghost" id="syncModalCancel" type="button">Cerrar</button>
+      </div>
+    </div>
   </div>
 
   <!-- ============================================================

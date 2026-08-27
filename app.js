@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v85";
+const APP_VERSION = "v86";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3358,3 +3358,78 @@ document.getElementById("chatFile")?.addEventListener("change", (e) => {
   const an = document.getElementById("chatAttachName");
   if (an) an.textContent = chatFileSel ? `Adjunto: ${chatFileSel.name}` : "";
 });
+
+/* ============================================================
+   BOTÓN: Sincronizar con Notion (manual, para admins)
+   Dispara las funciones de sync bajo demanda (sin cron).
+   ============================================================ */
+const SYNC_BASE = "https://avgtjafpreepneaxxfln.supabase.co/functions/v1/";
+const SYNC_DEFAULTS = [
+  { key: "tareas",     label: "Tareas",              fn: "sync-notion-tareas",       reload: "loadTasks",        delay: 6000 },
+  { key: "fases",      label: "Fases",               fn: "sync-notion-fases",        reload: "loadPhases",       delay: 7000 },
+  { key: "entregables",label: "Entregables",         fn: "sync-notion-entregables",  reload: "loadDeliverables", delay: 7000 },
+  { key: "clientes",   label: "Clientes",            fn: "sync-clientes-notion",     reload: "loadClients",      delay: 7000 },
+  { key: "grabacion",  label: "Grabación compartida",fn: "sync-grabacion-compartida",reload: "loadRecordings",   delay: 7000 },
+  { key: "estructura", label: "Estructura (pesado)", fn: "sync-notion-estructura",   reload: "loadDeliverables", delay: 12000, extra: "?limit=3" },
+];
+function syncFnName(key, def) {
+  try { const m = JSON.parse(localStorage.getItem("dnm-sync-fns") || "{}"); return m[key] || def; } catch (_) { return def; }
+}
+function setSyncFnName(key, val) {
+  try { const m = JSON.parse(localStorage.getItem("dnm-sync-fns") || "{}"); m[key] = val; localStorage.setItem("dnm-sync-fns", JSON.stringify(m)); } catch (_) {}
+}
+function syncStatus(msg, kind) {
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  el.className = "msg " + (kind === "ok" ? "msg--ok" : kind === "err" ? "msg--error" : "");
+  el.classList.remove("hidden");
+  el.textContent = msg;
+}
+function renderSyncRows() {
+  const box = document.getElementById("syncRows");
+  if (!box) return;
+  box.innerHTML = SYNC_DEFAULTS.map((t) => {
+    const fn = syncFnName(t.key, t.fn);
+    return `<div class="sync-row">
+      <div class="sync-row__label">${escapeHtml(t.label)}</div>
+      <input class="input input--sm sync-row__fn" data-key="${t.key}" value="${escapeHtml(fn)}" title="Nombre de la función" />
+      <button class="btn btn--primary btn--sm" data-sync="${t.key}" type="button">Sincronizar</button>
+      <a class="btn btn--ghost btn--sm" data-open="${t.key}" href="#" title="Abrir en pestaña">↗</a>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".sync-row__fn").forEach((el) => el.onchange = () => setSyncFnName(el.dataset.key, el.value.trim()));
+  box.querySelectorAll("[data-sync]").forEach((b) => b.onclick = () => runSync(b.dataset.sync));
+  box.querySelectorAll("[data-open]").forEach((a) => a.onclick = (e) => {
+    e.preventDefault();
+    const t = SYNC_DEFAULTS.find((x) => x.key === a.dataset.open);
+    const fn = syncFnName(t.key, t.fn);
+    window.open(SYNC_BASE + fn + (t.extra || ""), "_blank");
+  });
+}
+async function runSync(key) {
+  const t = SYNC_DEFAULTS.find((x) => x.key === key);
+  if (!t) return;
+  const fn = syncFnName(t.key, t.fn);
+  const url = SYNC_BASE + fn + (t.extra || "");
+  syncStatus(`Enviando “${t.label}”… espera unos segundos.`);
+  try { await fetch(url, { mode: "no-cors" }); } catch (_) {}
+  setTimeout(async () => {
+    try {
+      const RELOADERS = { loadTasks, loadPhases, loadDeliverables, loadClients, loadRecordings };
+      const fnRef = RELOADERS[t.reload];
+      if (typeof fnRef === "function") await fnRef();
+      renderAll();
+      syncStatus(`✓ “${t.label}” actualizado. Si no ves cambios, dale al ↗ para revisar el resultado.`, "ok");
+    } catch (_) {
+      syncStatus(`“${t.label}” enviado. Refresca la vista para ver cambios.`, "ok");
+    }
+  }, t.delay);
+}
+document.getElementById("btnSyncNotion")?.addEventListener("click", () => {
+  renderSyncRows();
+  document.getElementById("syncStatus")?.classList.add("hidden");
+  document.getElementById("syncOverlay")?.classList.add("open");
+});
+document.getElementById("syncModalClose")?.addEventListener("click", () => document.getElementById("syncOverlay")?.classList.remove("open"));
+document.getElementById("syncModalCancel")?.addEventListener("click", () => document.getElementById("syncOverlay")?.classList.remove("open"));
+document.getElementById("syncOverlay")?.addEventListener("click", (e) => { if (e.target.id === "syncOverlay") e.currentTarget.classList.remove("open"); });
