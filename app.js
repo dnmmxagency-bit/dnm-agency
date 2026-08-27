@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v67";
+const APP_VERSION = "v68";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -495,7 +495,8 @@ function renderBoard() {
   let baseTasks = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
   if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => asgIds(t).includes(boardPersonFilter));
   const sourceAll = baseTasks;
-  const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
+  let piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
+  if (boardPersonFilter && isAdmin()) piecesAll = piecesAll.filter((c) => c.owner_id === boardPersonFilter || asgIds(c).includes(boardPersonFilter));
   const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
   const pieces = piecesAll.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus));
   const total = source.length + pieces.length;
