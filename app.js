@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v83";
+const APP_VERSION = "v85";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -287,6 +287,7 @@ function switchView(view) {
   if (view === "contenido") { renderContent(); renderGuests(); }
   if (view === "entregables") { renderDeliverables(); }
   if (view === "fases") { renderPhases(); }
+  if (view === "chat") { enterChat(); } else { stopChatPoll(); }
   if (view === "usuarios") {
     if (!isAdmin()) { switchView("tablero"); return; }
     renderUsuarios();
@@ -2716,6 +2717,7 @@ function renderDeliverables() {
       <div class="deliv-bar"><div class="deliv-bar__fill" style="width:${pct}%"></div></div>
       <div class="deliv-bar__label">${pct}%</div>
       <div class="deliv-pieces">${piezasHtml}</div>
+      ${d.structure ? `<details class="collapse deliv-structure"><summary>Estructura</summary><div class="collapse__body md">${mdToHtml(d.structure)}</div></details>` : ""}
     </div>`;
   }).join("");
 
@@ -3214,4 +3216,145 @@ document.getElementById("btnAddAiLink")?.addEventListener("click", () => {
   clientAiLinks.push({ label: "", url: "" });
   renderAiLinksEditor();
   document.querySelector("#cAiLinks .ai-link-row:last-child .ai-link-label")?.focus();
+});
+
+/* Conversor seguro de markdown simple -> HTML (para la Estructura de entregables) */
+function mdToHtml(md) {
+  if (!md) return "";
+  const lines = escapeHtml(md).split("\n");
+  let html = "", inList = false;
+  const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+  for (let line of lines) {
+    line = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    if (/^### /.test(line)) { closeList(); html += `<h4>${line.slice(4)}</h4>`; }
+    else if (/^## /.test(line)) { closeList(); html += `<h3>${line.slice(3)}</h3>`; }
+    else if (/^# /.test(line)) { closeList(); html += `<h3>${line.slice(2)}</h3>`; }
+    else if (/^---\s*$/.test(line)) { closeList(); html += "<hr>"; }
+    else if (/^&gt;\s?/.test(line)) { closeList(); html += `<blockquote>${line.replace(/^&gt;\s?/, "")}</blockquote>`; }
+    else if (/^-\s/.test(line)) { if (!inList) { html += "<ul>"; inList = true; } html += `<li>${line.slice(2)}</li>`; }
+    else if (line.trim() === "") { closeList(); }
+    else { closeList(); html += `<p>${line}</p>`; }
+  }
+  closeList();
+  return html;
+}
+
+/* ============================================================
+   CHAT INTERNO (ligero: carga al abrir + refresco suave)
+   ============================================================ */
+const CHAT_BUCKET = "chat-files";
+let chatScope = "general";
+let chatClientId = null;
+let chatPollTimer = null;
+let chatFileSel = null;
+
+function chatFmtTime(iso) {
+  try { return new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+  catch (_) { return ""; }
+}
+
+function chatChannels() {
+  let cls = CLIENTS.slice();
+  if (!isAdmin()) cls = cls.filter(isMineItem); // miembros: solo sus clientes
+  return cls.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+function renderChatTabs() {
+  const bar = document.getElementById("chatTabs");
+  if (!bar) return;
+  const cls = chatChannels();
+  const tabs = [`<button class="phase-tab ${chatScope === "general" ? "active" : ""}" data-ch="general">General</button>`]
+    .concat(cls.map((c) => `<button class="phase-tab ${(chatScope === "client" && chatClientId === c.id) ? "active" : ""}" data-ch="${c.id}">${escapeHtml(c.name)}</button>`));
+  bar.innerHTML = tabs.join("");
+  bar.querySelectorAll(".phase-tab").forEach((b) => b.onclick = () => {
+    if (b.dataset.ch === "general") { chatScope = "general"; chatClientId = null; }
+    else { chatScope = "client"; chatClientId = b.dataset.ch; }
+    const t = document.getElementById("chatChannelTitle"); if (t) t.textContent = b.textContent;
+    renderChatTabs(); loadMessages();
+  });
+}
+
+async function loadMessages() {
+  const box = document.getElementById("chatMessages");
+  if (!box) return;
+  let q = sb.from("messages").select("*").order("created_at", { ascending: true }).limit(100);
+  if (chatScope === "general") q = q.eq("scope", "general");
+  else q = q.eq("scope", "client").eq("client_id", chatClientId);
+  const { data, error } = await q;
+  if (error) return;
+  renderMessages(data || []);
+}
+
+function renderMessages(list) {
+  const box = document.getElementById("chatMessages");
+  if (!box) return;
+  const me = currentProfile?.id;
+  if (!list.length) { box.innerHTML = `<div class="chat__empty">Aún no hay mensajes. ¡Escribe el primero!</div>`; return; }
+  box.innerHTML = list.map((m) => {
+    const mine = m.author_id === me;
+    let att = "";
+    if (m.attachment_url) {
+      const isImg = /\.(png|jpe?g|gif|webp)$/i.test(m.attachment_name || m.attachment_url);
+      att = isImg
+        ? `<a href="${escapeHtml(m.attachment_url)}" target="_blank" rel="noopener"><img class="chat__img" src="${escapeHtml(m.attachment_url)}" alt=""></a>`
+        : `<a class="chat__file" href="${escapeHtml(m.attachment_url)}" target="_blank" rel="noopener">📎 ${escapeHtml(m.attachment_name || "archivo")}</a>`;
+    }
+    return `<div class="chat__msg ${mine ? "mine" : ""}">
+      <div class="chat__meta"><span class="chat__author">${escapeHtml(memberName(m.author_id))}</span> · <span class="chat__time">${escapeHtml(chatFmtTime(m.created_at))}</span></div>
+      ${m.body ? `<div class="chat__body">${escapeHtml(m.body).replace(/\n/g, "<br>")}</div>` : ""}
+      ${att}
+    </div>`;
+  }).join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById("chatInput");
+  const body = (input?.value || "").trim();
+  if (!body && !chatFileSel) return;
+  const btn = document.getElementById("chatSend"); if (btn) btn.disabled = true;
+  try {
+    let attachment_url = null, attachment_name = null;
+    if (chatFileSel) {
+      const path = `${currentProfile.id}/${Date.now()}-${chatFileSel.name}`;
+      const { error: upErr } = await sb.storage.from(CHAT_BUCKET).upload(path, chatFileSel, { upsert: false });
+      if (!upErr) {
+        const { data: pub } = sb.storage.from(CHAT_BUCKET).getPublicUrl(path);
+        attachment_url = pub.publicUrl; attachment_name = chatFileSel.name;
+      } else { toast("No se pudo subir el adjunto"); }
+    }
+    const row = { author_id: currentProfile.id, scope: chatScope, client_id: chatScope === "client" ? chatClientId : null, body: body || null, attachment_url, attachment_name };
+    const { error } = await sb.from("messages").insert(row);
+    if (error) { toast("No se pudo enviar"); }
+    else {
+      input.value = ""; chatFileSel = null;
+      const an = document.getElementById("chatAttachName"); if (an) an.textContent = "";
+      const cf = document.getElementById("chatFile"); if (cf) cf.value = "";
+      await loadMessages();
+    }
+  } finally { if (btn) btn.disabled = false; }
+}
+
+function enterChat() {
+  renderChatTabs();
+  const t = document.getElementById("chatChannelTitle");
+  if (t) t.textContent = chatScope === "general" ? "General" : (CLIENTS.find((c) => c.id === chatClientId)?.name || "Cliente");
+  loadMessages();
+  stopChatPoll();
+  chatPollTimer = setInterval(() => {
+    const v = document.getElementById("view-chat");
+    if (v && v.classList.contains("active")) loadMessages(); else stopChatPoll();
+  }, 45000); // refresco suave cada 45s solo mientras el chat está abierto
+}
+function stopChatPoll() { if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } }
+
+document.getElementById("chatSend")?.addEventListener("click", sendMessage);
+document.getElementById("chatRefresh")?.addEventListener("click", loadMessages);
+document.getElementById("chatInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById("chatFile")?.addEventListener("change", (e) => {
+  chatFileSel = e.target.files?.[0] || null;
+  const an = document.getElementById("chatAttachName");
+  if (an) an.textContent = chatFileSel ? `Adjunto: ${chatFileSel.name}` : "";
 });

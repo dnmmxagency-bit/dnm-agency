@@ -187,6 +187,11 @@
           Historial
         </button>
 
+        <button class="nav__item" data-view="chat" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
+        </button>
+
         <div class="nav__group-label" data-admin-only>Administración</div>
         <button class="nav__item" data-view="usuarios" data-admin-only type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 2-2"/></svg>
@@ -327,6 +332,32 @@
           <div id="deliverablesList"></div>
         </section>
 
+        <!-- VISTA: Chat interno -->
+        <section class="view" id="view-chat">
+          <div class="page-head">
+            <div class="eyebrow">Equipo</div>
+            <h2 class="page-title">Chat</h2>
+            <p class="page-desc">Conversa con tu equipo. Canal General y un canal por cliente/proyecto.</p>
+          </div>
+          <div class="phase-tabs" id="chatTabs"></div>
+          <div class="chat">
+            <div class="chat__toolbar">
+              <span class="chat__title" id="chatChannelTitle">General</span>
+              <button class="btn btn--ghost btn--sm" id="chatRefresh" type="button">Refrescar</button>
+            </div>
+            <div class="chat__messages" id="chatMessages"></div>
+            <div class="chat__composer">
+              <textarea class="input" id="chatInput" placeholder="Escribe un mensaje…" rows="1"></textarea>
+              <label class="btn btn--ghost btn--sm chat__attach" title="Adjuntar">
+                <input type="file" id="chatFile" hidden />
+                📎
+              </label>
+              <button class="btn btn--primary" id="chatSend" type="button">Enviar</button>
+            </div>
+            <div class="chat__attachname" id="chatAttachName"></div>
+          </div>
+        </section>
+
         <!-- VISTA: Calendario compartido (espejo de Notion, solo lectura) -->
         <section class="view" id="view-compartido">
           <div class="page-head">
@@ -428,6 +459,10 @@
         <button class="bottomnav__item" data-view="entregables" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8V7a2 2 0 0 0-2-2h-5l-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h4"/><path d="M14 15l2 2 4-4"/></svg>
           Entregables
+        </button>
+        <button class="bottomnav__item" data-view="chat" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
         </button>
         <button class="bottomnav__item" data-view="clientes" data-admin-only type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
