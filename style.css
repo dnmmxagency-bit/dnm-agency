@@ -1471,3 +1471,18 @@ textarea.input { resize: vertical; min-height: 70px; }
   .md-table th, .md-table td { border-color: #999 !important; }
   .md blockquote { border-color: #999 !important; color: #333 !important; background: #f4f4f4 !important; }
 }
+
+/* Ficha de producción como DOCUMENTO en blanco (lectura/impresión cómoda) */
+#prodBody { background: #ffffff; color: #1a1a1a; border-radius: 8px; padding: 26px; }
+#prodBody .prod-head { border-bottom: 1px solid #ddd; }
+#prodBody .prod-title { color: #111; }
+#prodBody .prod-meta { color: #555; }
+#prodBody .prod-md { color: #1a1a1a; }
+#prodBody .prod-md h3 { color: #b5651d; }
+#prodBody .prod-md h4 { color: #111; }
+#prodBody .prod-md strong { color: #000; }
+#prodBody .prod-md a { color: #b5651d; }
+#prodBody .md-table th { background: #f2f2f2; color: #111; }
+#prodBody .md-table th, #prodBody .md-table td { border-color: #ccc; }
+#prodBody .md blockquote { background: #f7f2ea; border-color: #c77826; color: #333; }
+#prodBody .md hr { border-top-color: #ddd; }

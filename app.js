@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v92";
+const APP_VERSION = "v93";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3247,6 +3247,16 @@ function mdToHtml(md) {
       html += '<table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
         rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
       continue;
+    }
+    // Tabla PEGADA de una tabla ya renderizada (celdas separadas por tabulador)
+    if (line.includes("\t") && i + 1 < lines.length && lines[i + 1].includes("\t")) {
+      closeList();
+      const block = []; let j = i;
+      while (j < lines.length && lines[j].includes("\t")) { block.push(lines[j].split("\t").map((c) => c.trim())); j++; }
+      const header = block[0], rows = block.slice(1);
+      html += '<table class="md-table"><thead><tr>' + header.map((h) => `<th>${mdInline(h)}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r) => "<tr>" + r.map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+      i = j; continue;
     }
     line = mdInline(line);
     if (/^### /.test(line)) { closeList(); html += `<h4>${line.slice(4)}</h4>`; }
