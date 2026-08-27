@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v66";
+const APP_VERSION = "v67";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -421,7 +421,7 @@ function isMyTask(t, me) {
   me = me || currentProfile?.id;
   if (!me) return false;
   if (t.owner_id === me) return true;
-  return Array.isArray(t.assignee_ids) && t.assignee_ids.includes(me);
+  return asgIds(t).includes(String(me));
 }
 
 /* ---- Utilidades de presentación ---- */
@@ -470,6 +470,17 @@ function fillBoardClientFilter() {
   }
 }
 
+/* Normaliza assignee_ids a un arreglo de strings (por si viene como texto) */
+function asgIds(t) {
+  const a = t && t.assignee_ids;
+  if (Array.isArray(a)) return a.map(String);
+  if (typeof a === "string") {
+    try { const j = JSON.parse(a); if (Array.isArray(j)) return j.map(String); } catch (_) {}
+    return a.replace(/[{}"]/g, "").split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 /* ---- Render del tablero ---- */
 function renderBoard() {
   const board = $("#board");
@@ -477,8 +488,12 @@ function renderBoard() {
   fillBoardClientFilter();
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
+  // Leer filtros directo del menú (evita desincronización de estado)
+  boardClientFilter = $("#boardClientFilter")?.value || "";
+  boardPersonFilter = $("#boardPersonFilter")?.value || "";
+
   let baseTasks = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
-  if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => Array.isArray(t.assignee_ids) && t.assignee_ids.includes(boardPersonFilter));
+  if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => asgIds(t).includes(boardPersonFilter));
   const sourceAll = baseTasks;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
   const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
@@ -976,7 +991,7 @@ function createCalendar(mountId, opts) {
       return map;
     }
     TASKS.filter(opts.filter)
-      .filter((t) => (!boardPersonFilter || !isAdmin() || (Array.isArray(t.assignee_ids) && t.assignee_ids.includes(boardPersonFilter))))
+      .filter((t) => (!boardPersonFilter || !isAdmin() || asgIds(t).includes(boardPersonFilter)))
       .forEach((t) => {
       if (!t.due_date) return;
       (map[t.due_date] = map[t.due_date] || []).push({
