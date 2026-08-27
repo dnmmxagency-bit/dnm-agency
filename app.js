@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v68";
+const APP_VERSION = "v69";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -383,6 +383,9 @@ let editingTask = null; // null = creando; objeto = editando
 let taskNotes = [];     // notas generales en edición dentro del modal
 let taskCorrections = []; // correcciones de revisión en edición
 let taskAssignees = []; // responsables seleccionados (chips)
+let delivAssignees = [];
+let phaseAssignees = [];
+let clientAssignees = [];
 
 /* ---- Carga inicial de datos al entrar ---- */
 async function bootData() {
@@ -1243,6 +1246,7 @@ function renderClients() {
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
           ${CLIENT_FILE_COUNT[c.id] ? `<span class="ccard__files">${CLIENT_FILE_COUNT[c.id]} ${CLIENT_FILE_COUNT[c.id] === 1 ? "archivo" : "archivos"}</span>` : ""}
         </div>
+        ${assigneeMinis(c.assignee_ids)}
       </div>`;
     el.onclick = () => openClientModal(c);
     grid.appendChild(el);
@@ -1269,6 +1273,10 @@ function openClientModal(client) {
 
   $("#cName").value = client?.name || "";
   renderClientLogoPreview();
+  // Responsables
+  clientAssignees = (client && Array.isArray(client.assignee_ids)) ? client.assignee_ids.slice() : [];
+  makeMultiSelect($("#cPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), clientAssignees,
+    { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
   // Link del brief en Notion
   $("#cBriefUrl").value = client?.brief_url || "";
   updateBriefNotionBtn();
@@ -1350,6 +1358,7 @@ $("#btnSaveClient").onclick = async () => {
     notes: $("#cNotes").value.trim() || null,
     reason: $("#cReason").value.trim() || null,
     brief_url: $("#cBriefUrl").value.trim() || null,
+    assignee_ids: clientAssignees.slice(),
     sync_source: "app",
   };
 
@@ -2516,6 +2525,7 @@ function renderDeliverables() {
         <div>
           <div class="deliv-card__name">${escapeHtml(d.name)}</div>
           <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(d.estado || "Por iniciar")}</span> · ${done}/${meta} entregadas${d.delivery_date ? " · entrega " + fmtDate(d.delivery_date) : ""}</div>
+          ${assigneeMinis(d.assignee_ids)}
         </div>
         <div class="deliv-card__actions">
           <button class="btn btn--ghost btn--sm" data-edit-deliv="${d.id}" type="button">Editar</button>
@@ -2575,6 +2585,9 @@ function openDeliverableModal(item) {
   selEst.value = item?.estado || "Por iniciar";
   $("#dDelivery").value = item?.delivery_date || "";
   $("#dRecord").value = item?.record_date || "";
+  delivAssignees = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
+  makeMultiSelect($("#dPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), delivAssignees,
+    { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -2596,6 +2609,7 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     meta: Math.max(1, parseInt($("#dMeta").value || "1", 10)),
     phase_id: $("#dPhase").value || null,
     estado: $("#dEstado").value,
+    assignee_ids: delivAssignees.slice(),
     sync_source: "app",
     delivery_date: $("#dDelivery").value || null,
     record_date: $("#dRecord").value || null,
@@ -2768,6 +2782,7 @@ function renderPhases() {
         <div>
           <div class="deliv-card__name">${escapeHtml(p.name)}</div>
           <div class="deliv-card__meta">${cli ? escapeHtml(cli.name) + " · " : ""}<span class="chip">${escapeHtml(p.estado || "Por iniciar")}</span>${p.start_date ? " · " + fmtDate(p.start_date) : ""}${p.end_date ? " → " + fmtDate(p.end_date) : ""}</div>
+          ${assigneeMinis(p.assignee_ids)}
         </div>
         <div class="deliv-card__actions">
           <button class="btn btn--ghost btn--sm" data-edit-phase="${p.id}" type="button">Editar</button>
@@ -2815,6 +2830,9 @@ function openPhaseModal(item) {
   $("#phName").value = item?.name || "";
   $("#phStart").value = item?.start_date || "";
   $("#phEnd").value = item?.end_date || "";
+  phaseAssignees = (item && Array.isArray(item.assignee_ids)) ? item.assignee_ids.slice() : [];
+  makeMultiSelect($("#phPeople"), MEMBERS.map((m) => ({ id: m.id, name: m.name || m.email })), phaseAssignees,
+    { avatar: true, placeholder: "Agregar responsable…", emptyMsg: "Aún no hay más personas registradas." });
   $("#btnDeletePhase").classList.toggle("hidden", !item);
   $("#btnArchivePhase").classList.toggle("hidden", !item || item.status === "Archivada");
   phaseOverlay.classList.add("open");
@@ -2838,6 +2856,7 @@ $("#btnSavePhase")?.addEventListener("click", async () => {
     estado: $("#phEstado").value,
     start_date: $("#phStart").value || null,
     end_date: $("#phEnd").value || null,
+    assignee_ids: phaseAssignees.slice(),
     sync_source: "app",
     updated_at: new Date().toISOString(),
   };
@@ -2943,3 +2962,15 @@ function updateBriefNotionBtn() {
   else { btn.classList.add("hidden"); }
 }
 document.getElementById("cBriefUrl")?.addEventListener("input", updateBriefNotionBtn);
+
+/* Avatares (iniciales) de responsables para tarjetas de fase/entregable/cliente */
+function assigneeMinis(assignee_ids) {
+  const ids = asgIds({ assignee_ids });
+  if (!ids.length) return "";
+  let html = '<span class="mini-row">';
+  ids.slice(0, 3).forEach((id) => {
+    html += `<span class="mini" title="${escapeHtml(memberName(id))}">${escapeHtml(initials(memberName(id)))}</span>`;
+  });
+  if (ids.length > 3) html += `<span class="mini more">+${ids.length - 3}</span>`;
+  return html + "</span>";
+}

@@ -1353,3 +1353,8 @@ textarea.input { resize: vertical; min-height: 70px; }
 .logo-preview__initial { font-family: "Anton", sans-serif; font-size: 26px; color: var(--amber-hi); }
 .logo-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .logo-hint { font-size: 11px; color: var(--text-faint); }
+
+/* Responsables (mini avatares) en tarjetas de fase/entregable/cliente */
+.mini-row { display: inline-flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+.deliv-card__meta + .mini-row { margin-top: 6px; }
+.ccard__foot .mini-row { margin-top: 0; }
