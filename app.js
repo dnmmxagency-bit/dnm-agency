@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v74";
+const APP_VERSION = "v75";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -215,6 +215,7 @@ $("#btnLogout").onclick = async () => {
    Perfil + entrar a la app
    ============================================================ */
 let currentProfile = null;
+let didEnter = false; // evita entrar/cargar dos veces
 
 async function loadProfile(user) {
   // Intenta leer el perfil (lo crea un trigger al registrarse).
@@ -302,12 +303,17 @@ $$(".nav__item, .bottomnav__item").forEach((b) => {
 /* ============================================================
    Estado de sesión (mantiene al usuario dentro al recargar)
    ============================================================ */
-sb.auth.onAuthStateChange(async (_event, session) => {
+sb.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
+    // No recargar todo cuando solo se refresca el token en segundo plano
+    if (didEnter && event === "TOKEN_REFRESHED") return;
+    if (didEnter) return; // ya estamos dentro
     const p = await loadProfile(session.user);
     paintUser(p);
+    didEnter = true;
     enterApp();
   } else {
+    didEnter = false;
     currentProfile = null;
     exitApp();
   }
@@ -316,9 +322,10 @@ sb.auth.onAuthStateChange(async (_event, session) => {
 // Comprobación inicial al cargar la página
 (async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session?.user) {
+  if (data.session?.user && !didEnter) {
     const p = await loadProfile(data.session.user);
     paintUser(p);
+    didEnter = true;
     enterApp();
   }
 })();
