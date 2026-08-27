@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v87";
+const APP_VERSION = "v88";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -3435,7 +3435,7 @@ async function runSyncAll() {
       const fn = syncFnName(t.key, t.fn);
       syncStatus(`Sincronizando ${t.label} (${i + 1}/${targets.length})… no cierres esta ventana.`);
       try { await fetch(SYNC_BASE + fn + (t.extra || ""), { mode: "no-cors" }); } catch (_) {}
-      await new Promise((r) => setTimeout(r, t.delay)); // espera a que termine antes de la siguiente
+      await new Promise((r) => setTimeout(r, Math.max(t.delay, 13000))); // espacio amplio: evita que se encimen
     }
     syncStatus("Actualizando datos en la app…");
     try {
