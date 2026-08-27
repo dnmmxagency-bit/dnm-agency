@@ -1019,7 +1019,7 @@
         <details class="collapse" id="dStructureBox">
           <summary>Estructura / guion</summary>
           <div class="collapse__body">
-            <p class="field-hint" style="margin:0 0 8px">Escribe aquí los slides, guion, caption y CTA. Usa los botones para dar formato. Se ve ordenado en la tarjeta del entregable.</p>
+            <p class="field-hint" style="margin:0 0 8px">Escribe con los botones, o <strong>pega directo una tabla en markdown</strong> (por ejemplo, hecha en Claude) y se acomodará como tabla. La vista previa de abajo se actualiza sola.</p>
             <div class="md-toolbar" id="dStructureToolbar">
               <button type="button" class="btn btn--ghost btn--sm" data-md="h">H Título</button>
               <button type="button" class="btn btn--ghost btn--sm" data-md="b"><strong>B</strong></button>
@@ -1027,10 +1027,8 @@
               <button type="button" class="btn btn--ghost btn--sm" data-md="table">▦ Tabla</button>
             </div>
             <textarea class="input" id="dStructure" rows="12" placeholder="## Carrusel 1&#10;**Slide 1 — Gancho**&#10;Texto del gancho…"></textarea>
-            <div class="note-add__row" style="margin-top:8px">
-              <button class="btn btn--ghost btn--sm" id="dStructurePreviewBtn" type="button">Vista previa</button>
-            </div>
-            <div class="md" id="dStructurePreview" style="margin-top:10px"></div>
+            <div class="field-hint" style="margin:12px 0 4px">Vista previa (así se verá):</div>
+            <div class="md" id="dStructurePreview"></div>
           </div>
         </details>
       </div>

@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v90";
+const APP_VERSION = "v91";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2772,8 +2772,7 @@ function openDeliverableModal(item) {
   // Estructura / guion (editable en la app)
   const dStruct = document.getElementById("dStructure");
   if (dStruct) dStruct.value = item?.structure || "";
-  const dPrev = document.getElementById("dStructurePreview");
-  if (dPrev) dPrev.innerHTML = "";
+  updateStructPreview();
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -3482,11 +3481,16 @@ document.getElementById("syncModalClose")?.addEventListener("click", () => docum
 document.getElementById("syncModalCancel")?.addEventListener("click", () => document.getElementById("syncOverlay")?.classList.remove("open"));
 document.getElementById("syncOverlay")?.addEventListener("click", (e) => { if (e.target.id === "syncOverlay") e.currentTarget.classList.remove("open"); });
 
-/* Vista previa del editor de estructura del entregable */
-document.getElementById("dStructurePreviewBtn")?.addEventListener("click", () => {
+/* Vista previa EN VIVO del editor de estructura (se actualiza al escribir/pegar) */
+let _structPrevTimer = null;
+function updateStructPreview() {
   const src = document.getElementById("dStructure")?.value || "";
   const box = document.getElementById("dStructurePreview");
-  if (box) box.innerHTML = src.trim() ? mdToHtml(src) : '<span class="field-hint">Nada que previsualizar aún.</span>';
+  if (box) box.innerHTML = src.trim() ? mdToHtml(src) : '<span class="field-hint">Aquí verás el formato…</span>';
+}
+document.getElementById("dStructure")?.addEventListener("input", () => {
+  clearTimeout(_structPrevTimer);
+  _structPrevTimer = setTimeout(updateStructPreview, 250);
 });
 
 /* Barra de formato del editor de estructura (inserta markdown en el textarea) */
