@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v65";
+const APP_VERSION = "v66";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -478,7 +478,7 @@ function renderBoard() {
   board.querySelectorAll(".column__body").forEach((b) => (b.innerHTML = ""));
 
   let baseTasks = boardClientFilter ? TASKS.filter((t) => t.client_id === boardClientFilter) : TASKS;
-  if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => isMyTask(t, boardPersonFilter));
+  if (boardPersonFilter && isAdmin()) baseTasks = baseTasks.filter((t) => Array.isArray(t.assignee_ids) && t.assignee_ids.includes(boardPersonFilter));
   const sourceAll = baseTasks;
   const piecesAll = boardClientFilter ? CONTENT.filter((c) => c.client_id === boardClientFilter) : CONTENT;
   const source = sourceAll.filter((t) => !TASK_DONE.includes(taskStatus(t)));
@@ -976,7 +976,7 @@ function createCalendar(mountId, opts) {
       return map;
     }
     TASKS.filter(opts.filter)
-      .filter((t) => (!boardPersonFilter || !isAdmin() || isMyTask(t, boardPersonFilter)))
+      .filter((t) => (!boardPersonFilter || !isAdmin() || (Array.isArray(t.assignee_ids) && t.assignee_ids.includes(boardPersonFilter))))
       .forEach((t) => {
       if (!t.due_date) return;
       (map[t.due_date] = map[t.due_date] || []).push({
