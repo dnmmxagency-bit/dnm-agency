@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v78";
+const APP_VERSION = "v79";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -2891,6 +2891,18 @@ function phaseDeliverables(id) {
   return (typeof DELIVERABLES !== "undefined" ? DELIVERABLES : []).filter((d) => d.phase_id === id);
 }
 
+/* Avance de una fase = promedio del avance de sus entregables (o su etapa si no tiene) */
+function phaseProgress(p) {
+  const dels = phaseDeliverables(p.id);
+  if (dels.length) {
+    const pcts = dels.map((d) => deliverableProgress(d).pct);
+    const pct = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+    const done = pcts.filter((x) => x >= 100).length;
+    return { pct, done, total: dels.length, byStage: false };
+  }
+  return { pct: stagePct(p.estado), done: 0, total: 0, byStage: true };
+}
+
 function fillPhaseClientFilter() {
   const sel = $("#phaseClientFilter"); if (!sel) return;
   const cur = sel.value;
@@ -2921,6 +2933,8 @@ function renderPhases() {
 
   box.innerHTML = list.map((p) => {
     const cli = CLIENTS.find((c) => c.id === p.client_id);
+    const phProg = phaseProgress(p);
+    const phPct = phProg.pct;
     const dels = phaseDeliverables(p.id);
     const delsHtml = dels.length
       ? dels.map((d) => {
@@ -2949,6 +2963,8 @@ function renderPhases() {
             : `<button class="btn btn--ghost btn--sm" data-archive-phase="${p.id}" type="button">Archivar</button>`}
         </div>
       </div>
+      <div class="deliv-bar"><div class="deliv-bar__fill" style="width:${phPct}%"></div></div>
+      <div class="deliv-bar__label">${phPct}%${phProg.total ? ` · ${phProg.done}/${phProg.total} entregables completos` : ""}</div>
       <div class="deliv-pieces">${delsHtml}</div>
     </div>`;
   }).join("");
