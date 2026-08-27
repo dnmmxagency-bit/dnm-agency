@@ -489,25 +489,27 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="tDrive">Enlace de Drive del contenido</label>
-          <input class="input" type="url" id="tDrive" placeholder="https://drive.google.com/…" />
-        </div>
-
-        <div class="field">
-          <label for="tReels">Link de reels</label>
-          <input class="input" type="url" id="tReels" placeholder="https://… (reels / cortes)" />
-        </div>
-
-        <div class="field">
-          <label for="tContent">Episodio / pieza ligada</label>
-          <select class="input" id="tContent"><option value="">— Ninguna —</option></select>
-        </div>
-
-        <div class="field">
-          <label for="tRecording">Grabación vinculada</label>
-          <select class="input" id="tRecording"><option value="">— Ninguna —</option></select>
-        </div>
+        <details class="collapse">
+          <summary>Enlaces y vínculos</summary>
+          <div class="collapse__body">
+            <div class="field">
+              <label for="tDrive">Enlace de Drive del contenido</label>
+              <input class="input" type="url" id="tDrive" placeholder="https://drive.google.com/…" />
+            </div>
+            <div class="field">
+              <label for="tReels">Link de reels</label>
+              <input class="input" type="url" id="tReels" placeholder="https://… (reels / cortes)" />
+            </div>
+            <div class="field">
+              <label for="tContent">Episodio / pieza ligada</label>
+              <select class="input" id="tContent"><option value="">— Ninguna —</option></select>
+            </div>
+            <div class="field">
+              <label for="tRecording">Grabación vinculada</label>
+              <select class="input" id="tRecording"><option value="">— Ninguna —</option></select>
+            </div>
+          </div>
+        </details>
 
         <div class="field">
           <label>Responsables</label>
@@ -516,6 +518,9 @@
           </div>
         </div>
 
+        <details class="collapse">
+          <summary>Tiempo, notas y correcciones</summary>
+          <div class="collapse__body">
         <div class="field" id="tTimeField">
           <label>Tiempo registrado <span class="field-hint">— tiempo real en esta tarea</span></label>
           <div id="tTimeHint" class="files__hint hidden">Guarda la tarea para poder registrar tiempo.</div>
@@ -559,6 +564,8 @@
             </div>
           </div>
         </div>
+          </div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger btn--sm hidden" id="btnDeleteTask" type="button">Eliminar</button>

@@ -1396,3 +1396,13 @@ textarea.input { resize: vertical; min-height: 70px; }
 .ai-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2,#14130f); border: 1px solid var(--border,#2a2822); color: var(--text-dim,#b8b2a5); font-size: 12px; text-decoration: none; transition: all .15s; }
 .ai-chip::before { content: "↗"; opacity: .6; font-size: 11px; }
 .ai-chip:hover { border-color: var(--amber,#C77826); color: #fff; }
+
+/* ===== Secciones plegables (formularios) ===== */
+.collapse { border: 1px solid var(--border,#2a2822); border-radius: 8px; margin: 10px 0; background: var(--surface-2,#14130f); overflow: hidden; }
+.collapse > summary { list-style: none; cursor: pointer; padding: 12px 14px; font-size: 13px; font-weight: 600; color: var(--text-dim,#b8b2a5); display: flex; align-items: center; justify-content: space-between; user-select: none; }
+.collapse > summary::-webkit-details-marker { display: none; }
+.collapse > summary::after { content: "▸"; color: var(--amber,#C77826); transition: transform .15s; }
+.collapse[open] > summary::after { transform: rotate(90deg); }
+.collapse > summary:hover { color: #fff; }
+.collapse__body { padding: 4px 14px 14px; }
+.collapse__body .field:first-child { margin-top: 0; }
