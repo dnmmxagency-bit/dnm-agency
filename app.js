@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v93";
+const APP_VERSION = "v94";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -410,6 +410,7 @@ let taskNotes = [];     // notas generales en edición dentro del modal
 let taskCorrections = []; // correcciones de revisión en edición
 let taskAssignees = []; // responsables seleccionados (chips)
 let delivAssignees = [];
+let delivExtras = [];
 let phaseAssignees = [];
 let clientAssignees = [];
 let clientAiLinks = [];
@@ -2708,7 +2709,7 @@ function renderDeliverables() {
           ${assigneeMinis(d.assignee_ids)}
         </div>
         <div class="deliv-card__actions">
-          ${d.structure ? `<button class="btn btn--ghost btn--sm" data-prod-deliv="${d.id}" type="button">📖 Ficha</button>` : ""}
+          ${(d.structure || (Array.isArray(d.extras) && d.extras.length)) ? `<button class="btn btn--ghost btn--sm" data-prod-deliv="${d.id}" type="button">📖 Ficha</button>` : ""}
           <button class="btn btn--ghost btn--sm" data-edit-deliv="${d.id}" type="button">Editar</button>
           ${d.status === "Archivado"
             ? `<button class="btn btn--ghost btn--sm" data-unarchive-deliv="${d.id}" type="button">Reactivar</button>`
@@ -2775,6 +2776,9 @@ function openDeliverableModal(item) {
   const dStruct = document.getElementById("dStructure");
   if (dStruct) dStruct.value = item?.structure || "";
   updateStructPreview();
+  // Material adicional (cajas de texto + archivos)
+  delivExtras = (item && Array.isArray(item.extras)) ? JSON.parse(JSON.stringify(item.extras)) : [];
+  renderDelivExtras();
   $("#btnDeleteDeliverable").classList.toggle("hidden", !item);
   deliverableOverlay.classList.add("open");
   setTimeout(() => $("#dName").focus(), 50);
@@ -2798,6 +2802,7 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
     estado: $("#dEstado").value,
     assignee_ids: delivAssignees.slice(),
     structure: ($("#dStructure")?.value || "").trim() || null,
+    extras: readDelivExtras(),
     sync_source: "app",
     delivery_date: $("#dDelivery").value || null,
     record_date: $("#dRecord").value || null,
@@ -3546,10 +3551,84 @@ function openDeliverableProd(id) {
     <h2 class="prod-title">${escapeHtml(d.name)}</h2>
     <div class="prod-meta">${bits.join(" · ")}</div>
   </div>`;
-  const body = d.structure ? mdToHtml(d.structure) : '<p class="field-hint">Este entregable aún no tiene estructura.</p>';
-  document.getElementById("prodBody").innerHTML = head + `<div class="md prod-md">${body}</div>`;
+  const body = d.structure ? mdToHtml(d.structure) : "";
+  const extrasHtml = extrasToHtml(d.extras);
+  const inner = (body || extrasHtml) ? (body + (extrasHtml ? `<hr>${extrasHtml}` : "")) : '<p class="field-hint">Este entregable aún no tiene estructura.</p>';
+  document.getElementById("prodBody").innerHTML = head + `<div class="md prod-md">${inner}</div>` +
+    `<div class="prod-actions"><button class="btn btn--ghost btn--sm" id="prodPrintBottom" type="button">🖨 Imprimir / PDF</button></div>`;
   document.getElementById("prodOverlay")?.classList.add("open");
+  document.getElementById("prodPrintBottom")?.addEventListener("click", () => window.print());
 }
 document.getElementById("prodClose")?.addEventListener("click", () => document.getElementById("prodOverlay")?.classList.remove("open"));
 document.getElementById("prodOverlay")?.addEventListener("click", (e) => { if (e.target.id === "prodOverlay") e.currentTarget.classList.remove("open"); });
 document.getElementById("prodPrint")?.addEventListener("click", () => window.print());
+
+/* ============================================================
+   MATERIAL ADICIONAL de entregables (cajas de texto + archivos)
+   ============================================================ */
+const DELIV_FILES_BUCKET = "deliverable-files";
+
+function renderDelivExtras() {
+  const box = document.getElementById("dExtras");
+  if (!box) return;
+  if (!delivExtras.length) { box.innerHTML = '<div class="field-hint">Sin material adicional todavía.</div>'; return; }
+  box.innerHTML = delivExtras.map((x, i) => {
+    if (x.type === "file") {
+      return `<div class="extra-row extra-file">
+        <span class="extra-file__name">📎 ${escapeHtml(x.name || "archivo")}</span>
+        <a class="btn btn--ghost btn--sm" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">Abrir</a>
+        <button class="btn btn--ghost btn--sm" data-x-del="${i}" type="button">✕</button>
+      </div>`;
+    }
+    return `<div class="extra-row extra-text">
+      <input class="input input--sm x-title" data-i="${i}" placeholder="Título (opcional)" value="${escapeHtml(x.title || "")}" />
+      <button class="btn btn--ghost btn--sm" data-x-del="${i}" type="button">✕</button>
+      <textarea class="input x-body" data-i="${i}" rows="4" placeholder="Escribe aquí…">${escapeHtml(x.body || "")}</textarea>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".x-title").forEach((el) => el.oninput = () => { delivExtras[+el.dataset.i].title = el.value; });
+  box.querySelectorAll(".x-body").forEach((el) => el.oninput = () => { delivExtras[+el.dataset.i].body = el.value; });
+  box.querySelectorAll("[data-x-del]").forEach((b) => b.onclick = () => { delivExtras.splice(+b.dataset.xDel, 1); renderDelivExtras(); });
+}
+function readDelivExtras() {
+  // los inputs ya actualizan delivExtras por eventos; devolvemos limpio
+  return delivExtras.filter((x) => x.type === "file" ? x.url : (x.title || x.body));
+}
+document.getElementById("dAddText")?.addEventListener("click", () => {
+  delivExtras.push({ type: "text", title: "", body: "" });
+  const box = document.getElementById("dExtrasBox"); if (box) box.open = true;
+  renderDelivExtras();
+});
+document.getElementById("dAddFile")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0]; if (!file) return;
+  const box = document.getElementById("dExtrasBox"); if (box) box.open = true;
+  try {
+    const path = `${currentProfile.id}/${Date.now()}-${file.name}`;
+    const { error } = await sb.storage.from(DELIV_FILES_BUCKET).upload(path, file, { upsert: false });
+    if (error) { toast("No se pudo subir el archivo"); }
+    else {
+      const { data: pub } = sb.storage.from(DELIV_FILES_BUCKET).getPublicUrl(path);
+      delivExtras.push({ type: "file", name: file.name, url: pub.publicUrl });
+      renderDelivExtras();
+      toast("Archivo agregado");
+    }
+  } catch (_) { toast("Error al subir"); }
+  e.target.value = "";
+});
+
+/* HTML de los extras para la Ficha de producción */
+function extrasToHtml(extras) {
+  if (!Array.isArray(extras) || !extras.length) return "";
+  let html = "";
+  extras.forEach((x) => {
+    if (x.type === "file") {
+      const isImg = /\.(png|jpe?g|gif|webp)$/i.test(x.name || x.url || "");
+      html += isImg
+        ? `<div class="prod-extra"><a href="${escapeHtml(x.url)}" target="_blank" rel="noopener"><img class="prod-img" src="${escapeHtml(x.url)}" alt="${escapeHtml(x.name || "")}"></a></div>`
+        : `<div class="prod-extra"><a class="chat__file" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">📎 ${escapeHtml(x.name || "archivo")}</a></div>`;
+    } else if (x.title || x.body) {
+      html += `<div class="prod-extra">${x.title ? `<h4>${escapeHtml(x.title)}</h4>` : ""}${x.body ? mdToHtml(x.body) : ""}</div>`;
+    }
+  });
+  return html;
+}

@@ -1045,6 +1045,18 @@
             <div class="md" id="dStructurePreview"></div>
           </div>
         </details>
+        <details class="collapse" id="dExtrasBox">
+          <summary>Material adicional (cajas de texto y archivos)</summary>
+          <div class="collapse__body">
+            <div class="md-toolbar">
+              <button type="button" class="btn btn--ghost btn--sm" id="dAddText">+ Caja de texto</button>
+              <label class="btn btn--ghost btn--sm" style="cursor:pointer;display:inline-flex;align-items:center">+ Archivo
+                <input type="file" id="dAddFile" hidden />
+              </label>
+            </div>
+            <div id="dExtras"></div>
+          </div>
+        </details>
       </div>
       <div class="modal__foot">
         <button class="btn btn--danger hidden" id="btnDeleteDeliverable" type="button">Eliminar</button>

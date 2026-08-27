@@ -1486,3 +1486,16 @@ textarea.input { resize: vertical; min-height: 70px; }
 #prodBody .md-table th, #prodBody .md-table td { border-color: #ccc; }
 #prodBody .md blockquote { background: #f7f2ea; border-color: #c77826; color: #333; }
 #prodBody .md hr { border-top-color: #ddd; }
+
+/* Material adicional (editor) */
+.extra-row { border: 1px solid var(--border,#2a2822); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.extra-text { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.extra-text .x-title { flex: 1 1 auto; }
+.extra-text .x-body { flex: 1 1 100%; resize: vertical; }
+.extra-file { display: flex; align-items: center; gap: 8px; }
+.extra-file__name { flex: 1 1 auto; color: var(--text-dim,#b8b2a5); font-size: 13px; }
+/* Extras en la Ficha */
+.prod-extra { margin-top: 14px; }
+.prod-img { max-width: 100%; border-radius: 8px; }
+.prod-actions { margin-top: 20px; text-align: right; }
+#prodBody .prod-extra h4 { color: #111; }
