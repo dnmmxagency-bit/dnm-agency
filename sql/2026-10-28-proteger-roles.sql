@@ -16,17 +16,27 @@
 --     no tienen restricción, para que puedas administrar a mano.
 -- ============================================================
 
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role in ('admin', 'owner')
-  );
+-- is_admin() ya existe en producción y la usan otras políticas; solo se
+-- crea si falta (por ejemplo, en una base nueva) para no cambiarla.
+do $$
+begin
+  if to_regprocedure('public.is_admin()') is null then
+    execute $f$
+      create function public.is_admin()
+      returns boolean
+      language sql
+      stable
+      security definer
+      set search_path = public
+      as $b$
+        select exists (
+          select 1 from public.profiles
+          where id = auth.uid() and role in ('admin', 'owner')
+        );
+      $b$;
+    $f$;
+  end if;
+end;
 $$;
 
 create or replace function public.is_owner()

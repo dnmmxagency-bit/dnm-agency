@@ -103,6 +103,7 @@ function friendlyError(err) {
   if (m.includes("user already registered") || m.includes("already been registered")) return "Ese correo ya tiene una cuenta. Inicia sesión.";
   if (m.includes("password should be at least")) return "La contraseña debe tener al menos 6 caracteres.";
   if (m.includes("unable to validate email"))  return "Ese correo no parece válido.";
+  if (m.includes("signups not allowed")) return "El registro está cerrado. Pide a un administrador que te invite.";
   return err?.message || "Ocurrió un error. Intenta de nuevo.";
 }
 
@@ -130,6 +131,16 @@ function setMode(next) {
 function bindSwitchLink() {
   const link = $("#linkSwitch");
   if (link) link.onclick = (e) => { e.preventDefault(); setMode(mode === "login" ? "register" : "login"); };
+}
+
+/* Registro cerrado: las cuentas nuevas las invita un administrador desde
+   Supabase (Authentication > Users > Invite user). Ponlo en true solo si
+   vuelves a activar "Allow new users to sign up" en Supabase. */
+const SIGNUP_OPEN = false;
+if (!SIGNUP_OPEN) {
+  document.querySelector("#authScreen .tabs")?.classList.add("hidden");
+  const hint = $("#authSwitchHint");
+  if (hint) hint.textContent = "¿No tienes cuenta? Pide a un administrador que te invite.";
 }
 
 $("#tabLogin").onclick = () => setMode("login");
