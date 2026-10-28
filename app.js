@@ -1,7 +1,7 @@
 /* ============================================================
    DNM Agency Management — app.js  (Fase 1: acceso + esqueleto)
    ============================================================ */
-const APP_VERSION = "v98";
+const APP_VERSION = "v99";
 try {
   window.APP_VERSION = APP_VERSION;
   document.addEventListener("DOMContentLoaded", () => {
@@ -20,7 +20,8 @@ try {
   if (seen) splash.classList.add("instant");
 
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const hold = seen ? 500 : (reduce ? 800 : 5300);
+  // La animación de entrada termina en ~2 s; más espera solo retrasa el trabajo
+  const hold = seen ? 300 : (reduce ? 600 : 2200);
 
   let closed = false;
   const finish = () => {
@@ -305,15 +306,28 @@ $$(".nav__item, .bottomnav__item").forEach((b) => {
 /* ============================================================
    Estado de sesión (mantiene al usuario dentro al recargar)
    ============================================================ */
-sb.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    // No recargar todo cuando solo se refresca el token en segundo plano
-    if (didEnter && event === "TOKEN_REFRESHED") return;
-    if (didEnter) return; // ya estamos dentro
-    const p = await loadProfile(session.user);
+// Un solo punto de entrada. "entering" se marca ANTES del await para que
+// onAuthStateChange y la comprobación inicial no arranquen la app dos veces.
+let entering = false;
+async function enterWithUser(user) {
+  if (didEnter || entering) return;
+  entering = true;
+  try {
+    const p = await loadProfile(user);
     paintUser(p);
     didEnter = true;
     enterApp();
+  } finally {
+    entering = false;
+  }
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  // Supabase recomienda no hacer await dentro de este callback (puede
+  // bloquear el cliente), así que el trabajo se difiere con setTimeout.
+  if (session?.user) {
+    if (didEnter) return; // ya estamos dentro (incluye TOKEN_REFRESHED)
+    setTimeout(() => enterWithUser(session.user), 0);
   } else {
     didEnter = false;
     currentProfile = null;
@@ -324,12 +338,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 // Comprobación inicial al cargar la página
 (async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session?.user && !didEnter) {
-    const p = await loadProfile(data.session.user);
-    paintUser(p);
-    didEnter = true;
-    enterApp();
-  }
+  if (data.session?.user) enterWithUser(data.session.user);
 })();
 
 /* ============================================================
@@ -802,6 +811,12 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* Solo deja pasar enlaces http(s); bloquea "javascript:", "data:", etc. */
+function safeUrl(u) {
+  const s = String(u ?? "").trim();
+  return /^https?:\/\//i.test(s) ? s : "#";
+}
+
 /* ---- Construcción dinámica de columnas del tablero (por estatus) ---- */
 function buildBoardColumns() {
   const board = $("#board");
@@ -904,7 +919,7 @@ function openTaskModal(task, prefill, context) {
   selC.innerHTML = '<option value="">— Sin cliente —</option>' +
     CLIENTS.map((c) => {
       const st = c.status || "Activo";
-      return `<option value="${c.id}">${escapeHtml(c.name)}${st !== "Activo" ? ` (${st.toLowerCase()})` : ""}</option>`;
+      return `<option value="${c.id}">${escapeHtml(c.name)}${st !== "Activo" ? ` (${escapeHtml(st.toLowerCase())})` : ""}</option>`;
     }).join("");
   selC.onchange = updateTClientePreview;
 
@@ -1030,8 +1045,8 @@ $("#btnSaveTask").onclick = async () => {
   if (recId && TASK_DONE.includes($("#tEstado").value)) {
     await archiveRecording(recId);
   }
-  closeTaskModal();
   toast(editingTask ? "Tarea actualizada" : "Tarea creada");
+  closeTaskModal();
   await loadTasks();
 };
 
@@ -1259,7 +1274,8 @@ function createCalendar(mountId, opts) {
   }
 
   function shift(dir) {
-    if (mode === "month") cursor.setMonth(cursor.getMonth() + dir);
+    // setDate(1) evita que un día 29-31 se desborde y salte un mes
+    if (mode === "month") { cursor.setDate(1); cursor.setMonth(cursor.getMonth() + dir); }
     else cursor.setDate(cursor.getDate() + dir * 7);
     render();
   }
@@ -1355,7 +1371,7 @@ function renderClients() {
     const el = document.createElement("article");
     const status = c.status || "Activo";
     el.className = "ccard" + (status === "Pausado" ? " inactive" : "");
-    const stClass = "st-" + status.toLowerCase();
+    const stClass = "st-" + status.toLowerCase().replace(/[^a-z0-9-]/g, "");
     const subtitle = [c.empresa, c.industry].filter(Boolean).join(" · ");
     const typeShort = (c.client_type || "").replace(" (Podcast)", "");
     el.innerHTML = `
@@ -1371,7 +1387,7 @@ function renderClients() {
       </div>
       ${c.notes ? `<div class="ccard__notes">${escapeHtml(c.notes)}</div>` : ""}
       ${(() => { const pr = clientProgress(c.id); return pr ? `<div class="ccard__prog"><div class="deliv-bar"><div class="deliv-bar__fill" style="width:${pr.pct}%"></div></div><div class="deliv-bar__label">${pr.pct}% · ${pr.done}/${pr.total} entregables</div></div>` : ""; })()}
-      ${(Array.isArray(c.ai_links) && c.ai_links.length) ? `<div class="ccard__ailinks">${c.ai_links.filter((l) => l.url).map((l) => `<a class="ai-chip" href="${escapeHtml(l.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(l.label || "Enlace")}</a>`).join("")}</div>` : ""}
+      ${(Array.isArray(c.ai_links) && c.ai_links.length) ? `<div class="ccard__ailinks">${c.ai_links.filter((l) => l.url).map((l) => `<a class="ai-chip" href="${escapeHtml(safeUrl(l.url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(l.label || "Enlace")}</a>`).join("")}</div>` : ""}
       <div class="ccard__foot">
         <div class="ccard__badges">
           <span class="ccard__tasks">${n} ${n === 1 ? "tarea" : "tareas"}</span>
@@ -1747,7 +1763,7 @@ let contentClientFilter = "";
 let contentMine = false;
 
 function renderContentTabs() {
-  const bar = document.getElementById("contentTabs");
+  const bar = document.getElementById("contentClientTabs");
   if (!bar) return;
   // clientes que tienen piezas no archivadas
   const ids = [...new Set(CONTENT.filter((c) => !CONTENT_ARCHIVE.includes(c.estatus)).map((c) => c.client_id).filter(Boolean))];
@@ -1980,7 +1996,7 @@ $("#btnSaveContent").onclick = async () => {
   else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("content_items").insert(payload)); }
   btn.disabled = false; $("#btnSaveContentLabel").textContent = "Guardar";
   if (error) { showMsg("#contentMsg", "No se pudo guardar: " + error.message); return; }
-  closeContentModal(); toast(editingContent ? "Pieza actualizada" : "Pieza creada");
+  toast(editingContent ? "Pieza actualizada" : "Pieza creada"); closeContentModal();
   await loadContent(); renderContent(); renderBoard();
   if (calShared) calShared.render();
   if (typeof renderDeliverables === "function") renderDeliverables();
@@ -2052,7 +2068,7 @@ $("#btnSaveGuest").onclick = async () => {
   else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("guests").insert(payload)); }
   btn.disabled = false; $("#btnSaveGuestLabel").textContent = "Guardar";
   if (error) { showMsg("#guestMsg", "No se pudo guardar: " + error.message); return; }
-  closeGuestModal(); toast(editingGuest ? "Invitado actualizado" : "Invitado creado");
+  toast(editingGuest ? "Invitado actualizado" : "Invitado creado"); closeGuestModal();
   await loadGuests(); renderGuests();
 };
 
@@ -2824,12 +2840,13 @@ $("#btnSaveDeliverable")?.addEventListener("click", async () => {
   else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("deliverables").insert(payload)); }
   btn.disabled = false; $("#btnSaveDeliverableLabel").textContent = "Guardar";
   if (error) { showMsg("#deliverableMsg", "No se pudo guardar: " + error.message); return; }
-  closeDeliverableModal(); toast(editingDeliverable ? "Entregable actualizado" : "Entregable creado");
+  toast(editingDeliverable ? "Entregable actualizado" : "Entregable creado"); closeDeliverableModal();
   await loadDeliverables(); renderDeliverables();
 });
 
 $("#btnDeleteDeliverable")?.addEventListener("click", async () => {
   if (!editingDeliverable) return;
+  if (!confirm("¿Eliminar este entregable? No se puede deshacer.")) return;
   const { error } = await sb.from("deliverables").delete().eq("id", editingDeliverable.id);
   if (error) { showMsg("#deliverableMsg", "No se pudo eliminar: " + error.message); return; }
   closeDeliverableModal(); toast("Entregable eliminado");
@@ -2894,7 +2911,7 @@ $("#btnSaveRecording")?.addEventListener("click", async () => {
   else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("recordings").insert(payload)); }
   btn.disabled = false; $("#btnSaveRecordingLabel").textContent = "Guardar";
   if (error) { showMsg("#recordingMsg", "No se pudo guardar: " + error.message); return; }
-  closeRecordingModal(); toast(editingRecording ? "Grabación actualizada" : "Grabación creada");
+  toast(editingRecording ? "Grabación actualizada" : "Grabación creada"); closeRecordingModal();
   await loadRecordings(); if (calShared) calShared.render();
 });
 
@@ -2906,6 +2923,7 @@ $("#btnArchiveRecording")?.addEventListener("click", async () => {
 
 $("#btnDeleteRecording")?.addEventListener("click", async () => {
   if (!editingRecording) return;
+  if (!confirm("¿Eliminar esta grabación? No se puede deshacer.")) return;
   const { error } = await sb.from("recordings").delete().eq("id", editingRecording.id);
   if (error) { showMsg("#recordingMsg", "No se pudo eliminar: " + error.message); return; }
   closeRecordingModal(); toast("Grabación eliminada");
@@ -3110,7 +3128,7 @@ $("#btnSavePhase")?.addEventListener("click", async () => {
   else { payload.owner_id = currentProfile.id; ({ error } = await sb.from("phases").insert(payload)); }
   btn.disabled = false; $("#btnSavePhaseLabel").textContent = "Guardar";
   if (error) { showMsg("#phaseMsg", "No se pudo guardar: " + error.message); return; }
-  closePhaseModal(); toast(editingPhase ? "Fase actualizada" : "Fase creada");
+  toast(editingPhase ? "Fase actualizada" : "Fase creada"); closePhaseModal();
   await loadPhases(); renderPhases();
 });
 
@@ -3120,6 +3138,7 @@ $("#btnArchivePhase")?.addEventListener("click", async () => {
 
 $("#btnDeletePhase")?.addEventListener("click", async () => {
   if (!editingPhase) return;
+  if (!confirm("¿Eliminar esta fase? No se puede deshacer.")) return;
   const { error } = await sb.from("phases").delete().eq("id", editingPhase.id);
   if (error) { showMsg("#phaseMsg", "No se pudo eliminar: " + error.message); return; }
   closePhaseModal(); toast("Fase eliminada");
@@ -3327,12 +3346,13 @@ function renderChatTabs() {
 async function loadMessages() {
   const box = document.getElementById("chatMessages");
   if (!box) return;
-  let q = sb.from("messages").select("*").order("created_at", { ascending: true }).limit(100);
+  // Los 100 más recientes (descendente) y luego se invierten para mostrarlos en orden
+  let q = sb.from("messages").select("*").order("created_at", { ascending: false }).limit(100);
   if (chatScope === "general") q = q.eq("scope", "general");
   else q = q.eq("scope", "client").eq("client_id", chatClientId);
   const { data, error } = await q;
   if (error) return;
-  renderMessages(data || []);
+  renderMessages((data || []).reverse());
 }
 
 function renderMessages(list) {
@@ -3346,8 +3366,8 @@ function renderMessages(list) {
     if (m.attachment_url) {
       const isImg = /\.(png|jpe?g|gif|webp)$/i.test(m.attachment_name || m.attachment_url);
       att = isImg
-        ? `<a href="${escapeHtml(m.attachment_url)}" target="_blank" rel="noopener"><img class="chat__img" src="${escapeHtml(m.attachment_url)}" alt=""></a>`
-        : `<a class="chat__file" href="${escapeHtml(m.attachment_url)}" target="_blank" rel="noopener">📎 ${escapeHtml(m.attachment_name || "archivo")}</a>`;
+        ? `<a href="${escapeHtml(safeUrl(m.attachment_url))}" target="_blank" rel="noopener"><img class="chat__img" src="${escapeHtml(safeUrl(m.attachment_url))}" alt=""></a>`
+        : `<a class="chat__file" href="${escapeHtml(safeUrl(m.attachment_url))}" target="_blank" rel="noopener">📎 ${escapeHtml(m.attachment_name || "archivo")}</a>`;
     }
     return `<div class="chat__msg ${mine ? "mine" : ""}">
       <div class="chat__meta"><span class="chat__author">${escapeHtml(memberName(m.author_id))}</span> · <span class="chat__time">${escapeHtml(chatFmtTime(m.created_at))}</span></div>
@@ -3366,7 +3386,7 @@ async function sendMessage() {
   try {
     let attachment_url = null, attachment_name = null;
     if (chatFileSel) {
-      const path = `${currentProfile.id}/${Date.now()}-${chatFileSel.name}`;
+      const path = `${currentProfile.id}/${Date.now()}-${safeName(chatFileSel.name)}`;
       const { error: upErr } = await sb.storage.from(CHAT_BUCKET).upload(path, chatFileSel, { upsert: false });
       if (!upErr) {
         const { data: pub } = sb.storage.from(CHAT_BUCKET).getPublicUrl(path);
@@ -3590,7 +3610,7 @@ function renderDelivExtras() {
     if (x.type === "file") {
       return `<div class="extra-row extra-file">
         <span class="extra-file__name">📎 ${escapeHtml(x.name || "archivo")}</span>
-        <a class="btn btn--ghost btn--sm" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">Abrir</a>
+        <a class="btn btn--ghost btn--sm" href="${escapeHtml(safeUrl(x.url))}" target="_blank" rel="noopener">Abrir</a>
         <button class="btn btn--ghost btn--sm" data-x-del="${i}" type="button">✕</button>
       </div>`;
     }
@@ -3617,7 +3637,7 @@ document.getElementById("dAddFile")?.addEventListener("change", async (e) => {
   const file = e.target.files?.[0]; if (!file) return;
   const box = document.getElementById("dExtrasBox"); if (box) box.open = true;
   try {
-    const path = `${currentProfile.id}/${Date.now()}-${file.name}`;
+    const path = `${currentProfile.id}/${Date.now()}-${safeName(file.name)}`;
     const { error } = await sb.storage.from(DELIV_FILES_BUCKET).upload(path, file, { upsert: false });
     if (error) { toast("No se pudo subir el archivo"); }
     else {
@@ -3638,8 +3658,8 @@ function extrasToHtml(extras) {
     if (x.type === "file") {
       const isImg = /\.(png|jpe?g|gif|webp)$/i.test(x.name || x.url || "");
       html += isImg
-        ? `<div class="prod-extra"><a href="${escapeHtml(x.url)}" target="_blank" rel="noopener"><img class="prod-img" src="${escapeHtml(x.url)}" alt="${escapeHtml(x.name || "")}"></a></div>`
-        : `<div class="prod-extra"><a class="chat__file" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">📎 ${escapeHtml(x.name || "archivo")}</a></div>`;
+        ? `<div class="prod-extra"><a href="${escapeHtml(safeUrl(x.url))}" target="_blank" rel="noopener"><img class="prod-img" src="${escapeHtml(safeUrl(x.url))}" alt="${escapeHtml(x.name || "")}"></a></div>`
+        : `<div class="prod-extra"><a class="chat__file" href="${escapeHtml(safeUrl(x.url))}" target="_blank" rel="noopener">📎 ${escapeHtml(x.name || "archivo")}</a></div>`;
     } else if (x.title || x.body) {
       html += `<div class="prod-extra">${x.title ? `<h4>${escapeHtml(x.title)}</h4>` : ""}${x.body ? mdToHtml(x.body) : ""}</div>`;
     }
@@ -3809,7 +3829,11 @@ async function mountComments(entityType, entityId, containerId) {
       <textarea class="input cmt-input" rows="2" placeholder="Escribe un comentario…"></textarea>
       <button class="btn btn--ghost btn--sm cmt-send" type="button">Comentar</button>
     </div>`;
+  // Referencias tomadas antes de cualquier await: si se abre otro elemento
+  // mientras carga, este montaje no toca los botones del nuevo.
   const listEl = box.querySelector(".cmt-list");
+  const sendBtn = box.querySelector(".cmt-send");
+  const ta = box.querySelector(".cmt-input");
   const load = async () => {
     const { data } = await sb.from("comments").select("*")
       .eq("entity_type", entityType).eq("entity_id", entityId)
@@ -3820,16 +3844,17 @@ async function mountComments(entityType, entityId, containerId) {
       <div class="cmt-body">${escapeHtml(c.body || "").replace(/\n/g, "<br>")}</div>
     </div>`).join("") : '<div class="field-hint">Sin comentarios aún.</div>';
     listEl.querySelectorAll(".cmt-del").forEach((b) => b.onclick = async () => {
+      if (!confirm("¿Eliminar este comentario?")) return;
       await sb.from("comments").delete().eq("id", b.dataset.id); load();
     });
   };
-  await load();
-  box.querySelector(".cmt-send").onclick = async () => {
-    const ta = box.querySelector(".cmt-input"); const body = (ta.value || "").trim();
+  sendBtn.onclick = async () => {
+    const body = (ta.value || "").trim();
     if (!body) return;
     const { error } = await sb.from("comments").insert({ author_id: currentProfile.id, entity_type: entityType, entity_id: entityId, body });
     if (!error) { ta.value = ""; load(); } else { toast("No se pudo comentar"); }
   };
+  await load();
 }
 
 /* ============================================================
@@ -3842,7 +3867,7 @@ function renderTaskAttachments() {
   if (!taskAttachments.length) { box.innerHTML = '<div class="field-hint">Sin adjuntos.</div>'; return; }
   box.innerHTML = taskAttachments.map((a, i) => `<div class="extra-file">
     <span class="extra-file__name">📎 ${escapeHtml(a.name || "archivo")}</span>
-    <a class="btn btn--ghost btn--sm" href="${escapeHtml(a.url)}" target="_blank" rel="noopener">Abrir</a>
+    <a class="btn btn--ghost btn--sm" href="${escapeHtml(safeUrl(a.url))}" target="_blank" rel="noopener">Abrir</a>
     <button class="btn btn--ghost btn--sm" data-ta-del="${i}" type="button">✕</button>
   </div>`).join("");
   box.querySelectorAll("[data-ta-del]").forEach((b) => b.onclick = () => { taskAttachments.splice(+b.dataset.taDel, 1); renderTaskAttachments(); });
@@ -3850,7 +3875,7 @@ function renderTaskAttachments() {
 document.getElementById("tAddFile")?.addEventListener("change", async (e) => {
   const file = e.target.files?.[0]; if (!file) return;
   try {
-    const path = `${currentProfile.id}/${Date.now()}-${file.name}`;
+    const path = `${currentProfile.id}/${Date.now()}-${safeName(file.name)}`;
     const { error } = await sb.storage.from("deliverable-files").upload(path, file, { upsert: false });
     if (error) { toast("No se pudo subir"); }
     else {

@@ -1,13 +1,14 @@
 /* ============================================================
    DNM Agency Management — Service Worker
-   Estrategia: NETWORK-FIRST con respaldo en caché.
-   -> Cada despliegue nuevo se ve de inmediato si hay internet;
-      si no hay red, se usa la última versión guardada.
+   Estrategia:
+   - index.html, app.js, style.css y manifest: NETWORK-FIRST
+     (cada despliegue se ve de inmediato; sin red, la copia guardada).
+   - Íconos y demás estáticos: caché primero (casi nunca cambian).
 
-   IMPORTANTE: sube el número de versión (v1 -> v2 -> ...) cada vez
-   que cambies el código, para forzar que se limpie el caché viejo.
+   IMPORTANTE: sube el número de versión junto con APP_VERSION en
+   app.js cada vez que cambies el código.
    ============================================================ */
-const CACHE_NAME = "dnm-agency-v98";
+const CACHE_NAME = "dnm-agency-v99";
 
 const CORE_ASSETS = [
   "./",
@@ -23,10 +24,12 @@ const CORE_ASSETS = [
   "./icons/apple-touch-icon.png"
 ];
 
-// Instalar: precargar el esqueleto
+// Instalar: precargar el esqueleto saltándose la caché HTTP del navegador
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS.map((u) => new Request(u, { cache: "reload" }))))
+      .catch(() => {})
   );
   self.skipWaiting();
 });
@@ -41,8 +44,9 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Interceptar peticiones — STALE-WHILE-REVALIDATE
-// Sirve al instante lo cacheado (arranque rápido) y actualiza en segundo plano.
+const isAppShell = (req, url) =>
+  req.mode === "navigate" || /\/$|\.(html|js|css|json)$/.test(url.pathname);
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -51,13 +55,26 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
+      if (isAppShell(req, url)) {
+        // NETWORK-FIRST: código siempre al día
+        try {
+          const res = await fetch(req, { cache: "no-cache" });
+          if (res && res.ok) cache.put(req, res.clone());
+          return res;
+        } catch (_) {
+          return (await cache.match(req)) || cache.match("./index.html");
+        }
+      }
+      // CACHE-FIRST para estáticos
       const cached = await cache.match(req);
-      const network = fetch(req)
-        .then((res) => { if (res && res.ok) cache.put(req, res.clone()); return res; })
-        .catch(() => null);
-      // Si hay copia en caché, la devuelve YA (rápido) y actualiza atrás;
-      // si no, espera a la red; si tampoco, cae al index.
-      return cached || (await network) || cache.match("./index.html");
+      if (cached) return cached;
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      } catch (_) {
+        return cache.match("./index.html");
+      }
     })
   );
 });

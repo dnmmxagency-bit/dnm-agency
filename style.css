@@ -890,8 +890,10 @@ textarea.input { resize: vertical; min-height: 70px; }
 }
 #ambient span {
   position: absolute; border-radius: 50%;
-  background: radial-gradient(circle, rgba(199,120,38,0.11), rgba(199,120,38,0) 62%);
-  filter: blur(48px); will-change: transform;
+  /* Sin filter: blur — el degradado radial ya es suave y el blur animado
+     se recalculaba en cada frame (gasto de batería en móvil). */
+  background: radial-gradient(circle, rgba(199,120,38,0.10), rgba(199,120,38,0) 65%);
+  will-change: transform;
 }
 #ambient .b1 { width: 62vmax; height: 62vmax; top: -22vmax; left: -12vmax; animation: drift1 26s ease-in-out infinite alternate; }
 #ambient .b2 { width: 58vmax; height: 58vmax; bottom: -26vmax; right: -16vmax; animation: drift2 32s ease-in-out infinite alternate; }
